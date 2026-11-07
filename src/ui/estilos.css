@@ -585,3 +585,19 @@ a.tarjeta.tarjeta-enlace { margin-bottom: 1rem; }
 .barras li { display: grid; grid-template-columns: 8.5rem 1fr auto; align-items: center; gap: 0.5rem; font-size: 0.92rem; }
 .pista { height: 0.7rem; background: var(--superficie-2); border-radius: 999px; overflow: hidden; }
 .barra { display: block; height: 100%; background: var(--morado); border-radius: 999px; }
+
+/* ------------------------------------------------------------------ */
+/* Fase g: menú y recetas                                              */
+/* ------------------------------------------------------------------ */
+.semana-menu { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.semana-menu li { display: grid; grid-template-columns: 2.6rem 1fr 1fr; gap: 0.4rem; align-items: stretch; }
+.semana-menu li.hoy .dia-menu { background: var(--rosa-boton); color: var(--sobre-rosa); }
+.dia-menu { display: grid; place-items: center; align-content: center; border-radius: var(--radio-s); background: var(--superficie-2); font-size: 0.9rem; line-height: 1.1; }
+.plato {
+  all: unset; box-sizing: border-box; display: grid; gap: 0.1rem; align-content: center; min-height: 3.4rem; padding: 0.4rem 0.6rem; cursor: pointer;
+  border-radius: var(--radio-s); border: 1.5px dashed var(--borde-fuerte); background: var(--superficie); color: var(--texto-2); overflow-wrap: anywhere;
+}
+.plato.lleno { border-style: solid; border-color: var(--borde); color: var(--texto); font-weight: 700; }
+.plato:focus-visible { outline: 3px solid var(--foco); }
+.plato small { font-weight: 600; font-size: 0.75rem; }
+.ingredientes { margin: 0 0 1rem; padding-left: 1.2rem; display: grid; gap: 0.25rem; }

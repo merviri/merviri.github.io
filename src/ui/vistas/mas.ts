@@ -3,7 +3,7 @@ import { h } from "../dom";
 import { dibujosSinVer } from "./dibujos";
 
 /** «Más»: el resto de secciones (y las que llegarán). */
-const PRONTO: [string, string][] = [["🍝", "Menú"], ["📷", "Álbum"]];
+const PRONTO: [string, string][] = [["📷", "Álbum"]];
 
 export function vistaMas(app: Merviri): HTMLElement {
   const nuevos = dibujosSinVer(app).length;
@@ -14,6 +14,8 @@ export function vistaMas(app: Merviri): HTMLElement {
     h("h1", {}, "Más"),
     h("div", { class: "cuadricula" },
       casilla("#gastos", "💶", "Gastos"),
+      casilla("#menu", "🍝", "Menú"),
+      casilla("#recetas", "📖", "Recetas"),
       casilla("#descubrir", "🔎", "Descubrir"),
       casilla("#notas", "🗒️", "Notas"),
       casilla("#dibujos", "🎨", "Dibujos", nuevos ? `${nuevos} nuevo${nuevos === 1 ? "" : "s"}` : undefined),

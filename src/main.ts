@@ -14,6 +14,7 @@ import { vistaCalendario } from "./ui/vistas/calendario";
 import { vistaDescubrir } from "./ui/vistas/descubrir";
 import { vistaBote, vistaGastos } from "./ui/vistas/gastos";
 import { vistaMas } from "./ui/vistas/mas";
+import { vistaMenu, vistaReceta, vistaRecetas } from "./ui/vistas/menu";
 import { vistaPlan, vistaPlanes } from "./ui/vistas/planes";
 import { vistaQueHacemos } from "./ui/vistas/quehacemos";
 import { avisarDibujoNuevo, dibujosSinVer, vistaDibujar, vistaDibujo, vistaDibujos } from "./ui/vistas/dibujos";
@@ -49,6 +50,9 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
   mas: (a) => vistaMas(a),
   planes: (a) => vistaPlanes(a),
   gastos: (a) => vistaGastos(a),
+  menu: (a) => vistaMenu(a),
+  recetas: (a) => vistaRecetas(a),
+  receta: (a, p) => vistaReceta(a, p),
   bote: (a, p) => vistaBote(a, p),
   plan: (a, p) => vistaPlan(a, p),
   descubrir: (a) => vistaDescubrir(a),
@@ -67,14 +71,14 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
 };
 /** Pestaña de la barra inferior a la que pertenece cada ruta. */
 const PESTANA: Record<string, string> = {
-  lista: "listas", plan: "planes", gastos: "mas", bote: "mas", descubrir: "planes", "que-hacemos": "planes", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
+  lista: "listas", plan: "planes", gastos: "mas", bote: "mas", menu: "mas", recetas: "mas", receta: "mas", descubrir: "planes", "que-hacemos": "planes", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
 };
 
 function ruta(): { nombre: string; param: string } {
   const [nombre = "", ...resto] = location.hash.slice(1).split("/");
   const param = resto.join("/");
   if (!(nombre in VISTAS)) return { nombre: "inicio", param: "" };
-  if (["lista", "nota", "dibujo", "plan", "bote"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
+  if (["lista", "nota", "dibujo", "plan", "bote", "receta"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
   if (nombre === "calendario" && param && !/^\d{4}-\d{2}-\d{2}$/.test(param)) return { nombre, param: "" };
   return { nombre, param };
 }
