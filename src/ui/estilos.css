@@ -294,7 +294,7 @@ body { padding-bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px)); }
 
 .navegacion {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid; grid-template-columns: repeat(6, 1fr);
   padding: 0.3rem 0.4rem calc(0.3rem + env(safe-area-inset-bottom, 0px));
   background: color-mix(in srgb, var(--superficie) 94%, transparent);
   backdrop-filter: blur(10px);
@@ -302,7 +302,7 @@ body { padding-bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px)); }
 }
 .pestana {
   position: relative; display: grid; justify-items: center; gap: 0.05rem; padding: 0.35rem 0.2rem;
-  border-radius: 14px; color: var(--texto-2); text-decoration: none; font-size: 0.76rem; font-weight: 800;
+  border-radius: 14px; color: var(--texto-2); text-decoration: none; font-size: 0.7rem; font-weight: 800; min-width: 0;
 }
 .pestana .emoji { font-size: 1.35rem; line-height: 1.2; }
 .pestana[aria-current="page"] { background: var(--rosa-suave); color: var(--rosa-texto); }
@@ -541,3 +541,29 @@ a.tarjeta.tarjeta-enlace { margin-bottom: 1rem; }
 .fila > .campo { flex: 1; min-width: 0; }
 .detalle-evento p { margin: 0 0 0.5rem; }
 .notas-evento { white-space: pre-line; background: var(--superficie-2); padding: 0.6rem 0.8rem; border-radius: var(--radio-s); }
+
+/* ------------------------------------------------------------------ */
+/* Fase e: planes, descubrir y «¿Qué hacemos?»                         */
+/* ------------------------------------------------------------------ */
+.pestana span:not(.emoji):not(.insignia) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.boton-grande { min-height: 54px; font-size: 1.1rem; }
+.tarjeta-enlace.plan .crece { gap: 0.25rem; }
+.tarjeta-morada.tarjeta-enlace { color: var(--morado-texto); border-color: transparent; background: var(--morado-suave); }
+.tarjeta-morada.tarjeta-enlace small { color: var(--morado-texto); opacity: 0.85; }
+.corazones { display: grid; gap: 0.1rem; justify-items: end; font-size: 0.85rem; font-weight: 900; letter-spacing: 0.05em; }
+.ganas.t-turquesa { color: var(--turquesa-titulo); }
+.ganas.t-rosa { color: var(--rosa-titulo); }
+.selector-ganas { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+.selector-ganas button { font: inherit; font-weight: 800; padding: 0.6rem; border-radius: var(--radio-s); border: 1.5px solid var(--borde-fuerte); background: var(--superficie); color: var(--texto); cursor: pointer; }
+.selector-ganas button[aria-checked="true"] { background: var(--rosa-suave); border-color: var(--rosa); color: var(--rosa-texto); }
+.descubrir { align-items: flex-start; }
+.descubrir .acciones { display: flex; gap: 0.3rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; max-width: 45%; }
+.segmentado.cuatro { grid-template-columns: repeat(4, 1fr); }
+.selector-dias.meses { grid-template-columns: repeat(6, 1fr); }
+.selector-dias.meses span { border-radius: 10px; font-size: 0.85rem; }
+.sugerencias { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.8rem; }
+.sugerencia h3 { margin: 0.3rem 0; font-size: 1.15rem; }
+.sugerencia .cuando { font-weight: 800; color: var(--rosa-texto); margin: 0; }
+.sugerencia .cuando::first-letter { text-transform: uppercase; }
+.sugerencia .tiempo { margin: 0.2rem 0 0; font-weight: 700; }
+.aviso-reserva { background: var(--aviso-suave); color: var(--aviso-texto); padding: 0.5rem 0.7rem; border-radius: var(--radio-s); font-weight: 700; }

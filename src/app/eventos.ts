@@ -4,6 +4,7 @@ import { fechaCorta } from "../dominio/fechas";
 import type { Destino } from "../dominio/dibujos";
 import type { Lista } from "../dominio/listas";
 import { resumen, type Nota } from "../dominio/notas";
+import type { Plan } from "../dominio/planes";
 import { otraPersona, type IdPersona } from "../dominio/pareja";
 import { aQuien, type Tarea } from "../dominio/tareas";
 import type { Merviri } from "./app";
@@ -87,6 +88,17 @@ export function avisarEvento(app: Merviri, e: Evento, antes: Evento | null) {
     aviso: (textos) => ({
       t: textos.length > 1 ? `📅 ${quien} ha apuntado ${textos.length} cosas` : `📅 ${quien} ha apuntado en el calendario`,
       b: enumerar(textos), r: `calendario/${e.inicio}`, e: "eventos-nuevos",
+    }),
+  });
+}
+
+export function avisarPlan(app: Merviri, p: Plan) {
+  const quien = yo(app);
+  app.avisador?.encolar({
+    tipo: "plan", para: otraPersona(app.persona), clave: "planes", texto: p.titulo,
+    aviso: (titulos) => ({
+      t: titulos.length > 1 ? `✨ ${quien} ha apuntado ${titulos.length} ideas` : `✨ Idea de ${quien}`,
+      b: `${enumerar(titulos)} · ¿Cuántas ganas tienes?`, r: titulos.length > 1 ? "planes" : `plan/${p.id}`, e: "planes-nuevos",
     }),
   });
 }

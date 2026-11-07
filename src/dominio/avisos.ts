@@ -20,7 +20,7 @@ export const RUTA_PROGRAMADOS = "avisos/programados.json";
 export const ID_PLAN = "plan";
 export const WORKFLOW_AVISOS = "avisos.yml";
 
-export type TipoAviso = "dibujo" | "megusta" | "recordatorio" | "tarea" | "lista" | "nota" | "evento" | "manana" | "aniversario";
+export type TipoAviso = "dibujo" | "megusta" | "recordatorio" | "tarea" | "lista" | "nota" | "evento" | "plan" | "manana" | "aniversario";
 
 export const TIPOS_AVISO: { tipo: TipoAviso; texto: string; porDefecto: boolean }[] = [
   { tipo: "dibujo", texto: "🎨 Dibujos para mí", porDefecto: true },
@@ -30,6 +30,7 @@ export const TIPOS_AVISO: { tipo: TipoAviso; texto: string; porDefecto: boolean 
   { tipo: "lista", texto: "📝 Cosas nuevas en las listas", porDefecto: true },
   { tipo: "nota", texto: "🗒️ Notas nuevas", porDefecto: false },
   { tipo: "evento", texto: "📅 Calendario: eventos nuevos y recordatorios", porDefecto: true },
+  { tipo: "plan", texto: "✨ Ideas nuevas en Planes", porDefecto: true },
   { tipo: "manana", texto: "☀️ Resumen de la mañana (9:00): mis planes y tareas del día", porDefecto: true },
   { tipo: "aniversario", texto: "💜 Aniversarios y días redondos", porDefecto: true },
 ];

@@ -11,7 +11,10 @@ import { dialogo, h, icono, tostada } from "./ui/dom";
 import { vistaAjustes } from "./ui/vistas/ajustes";
 import { vistaBienvenida } from "./ui/vistas/bienvenida";
 import { vistaCalendario } from "./ui/vistas/calendario";
+import { vistaDescubrir } from "./ui/vistas/descubrir";
 import { vistaMas } from "./ui/vistas/mas";
+import { vistaPlan, vistaPlanes } from "./ui/vistas/planes";
+import { vistaQueHacemos } from "./ui/vistas/quehacemos";
 import { avisarDibujoNuevo, dibujosSinVer, vistaDibujar, vistaDibujo, vistaDibujos } from "./ui/vistas/dibujos";
 import { vistaInicio } from "./ui/vistas/inicio";
 import { vistaLista, vistaListas } from "./ui/vistas/listas";
@@ -43,6 +46,10 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
   inicio: (a) => vistaInicio(a),
   calendario: (a, p) => vistaCalendario(a, p),
   mas: (a) => vistaMas(a),
+  planes: (a) => vistaPlanes(a),
+  plan: (a, p) => vistaPlan(a, p),
+  descubrir: (a) => vistaDescubrir(a),
+  "que-hacemos": (a) => vistaQueHacemos(a),
   listas: (a) => vistaListas(a),
   lista: (a, p) => vistaLista(a, p),
   tareas: (a) => vistaTareas(a),
@@ -57,14 +64,14 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
 };
 /** Pestaña de la barra inferior a la que pertenece cada ruta. */
 const PESTANA: Record<string, string> = {
-  lista: "listas", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
+  lista: "listas", plan: "planes", descubrir: "planes", "que-hacemos": "planes", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
 };
 
 function ruta(): { nombre: string; param: string } {
   const [nombre = "", ...resto] = location.hash.slice(1).split("/");
   const param = resto.join("/");
   if (!(nombre in VISTAS)) return { nombre: "inicio", param: "" };
-  if (["lista", "nota", "dibujo"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
+  if (["lista", "nota", "dibujo", "plan"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
   if (nombre === "calendario" && param && !/^\d{4}-\d{2}-\d{2}$/.test(param)) return { nombre, param: "" };
   return { nombre, param };
 }
@@ -87,9 +94,10 @@ function pintarNavegacion() {
   const pestanas: [string, string, string, number][] = [
     ["inicio", "🏠", "Inicio", 0],
     ["calendario", "📅", "Calendario", 0],
+    ["planes", "✨", "Planes", 0],
     ["tareas", "✅", "Tareas", tareasHoy],
     ["listas", "📝", "Listas", 0],
-    ["mas", "✨", "Más", dibujosNuevos],
+    ["mas", "☰", "Más", dibujosNuevos],
   ];
   navegacion.replaceChildren(...pestanas.map(([id, emoji, nombre, n]) =>
     h("a", { href: `#${id}`, class: "pestana", "aria-current": actual === id ? "page" : undefined },

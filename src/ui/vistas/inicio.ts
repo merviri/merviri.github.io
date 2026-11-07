@@ -91,6 +91,11 @@ export function vistaInicio(app: Merviri): HTMLElement {
     !cal.hoy.length && !paraHoy.length ? h("p", { class: "secundario" }, "Nada apuntado para hoy ✨") : null,
     paraHoy.length > 6 ? h("p", {}, h("a", { class: "enlace-suave", href: "#tareas" }, `Ver las ${paraHoy.length} tareas ›`)) : null,
 
+    h("a", { class: "tarjeta tarjeta-morada tarjeta-enlace arriba-mas", href: "#que-hacemos" },
+      h("span", { class: "emoji-grande", "aria-hidden": "true" }, "✨"),
+      h("span", { class: "crece" }, h("b", {}, "¿Qué hacemos?"), h("small", {}, "Ideas para vuestros huecos libres, con el tiempo que hará")),
+      h("span", { class: "flecha", "aria-hidden": "true" }, "›")),
+
     cal.proximos.length
       ? [
         h("h2", { class: "arriba-mas" }, "Próximos días"),

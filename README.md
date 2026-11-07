@@ -79,6 +79,8 @@ datos/calendario/<año>.json eventos sueltos, por año de inicio
 datos/calendario/repetidos.json  eventos que se repiten (cumpleaños, clases…)
 datos/horarios.json         horario habitual de cada una
 datos/suscripciones.json    avisos: dirección y claves de cada móvil
+datos/planes.json           planes y deseos
+datos/ganas.json            ganas de cada una en cada plan
 ```
 
 Todos los ficheros de `datos/` van cifrados.
@@ -110,7 +112,7 @@ Al subir a `main`, `.github/workflows/publicar.yml` pasa las pruebas, compila y 
 - [x] **b.** Listas, tareas con turnos y recordatorios, notas y dibujos (con aviso al abrir la app).
 - [x] **c.** Avisos (Web Push): dibujos, ❤️, «recuérdaselo», tareas y listas al momento; resumen de la mañana y aniversarios con hora.
 - [x] **d.** Calendario común (mes, semana con horas y agenda), «ocupada» sin detalles, cumpleaños, horario habitual y recordatorios.
-- [ ] **e.** Planes y deseos, Descubrir (agenda de Valladolid, mercadillos, sitios) y recomendador.
+- [x] **e.** Planes y deseos (plazo, dificultad, duración, coste, reserva, clima, temporada, ganas de cada una), Descubrir (catálogo, agenda de la Junta, fechas especiales, sitios cercanos) y «¿Qué hacemos?» (huecos libres + tiempo de Open-Meteo).
 - [ ] **f.** Gastos tipo Tricount.
 - [ ] **g.** Recetas, menú semanal y lista de la compra.
 - [ ] **h.** Álbum compartido con fotos originales.

@@ -12,7 +12,8 @@ const CSP = [
   "style-src 'self'",
   "font-src 'self'",
   "img-src 'self' data: blob:",
-  "connect-src 'self' https://api.github.com",
+  // GitHub (datos), Open-Meteo (tiempo) y la agenda de la Junta (Descubrir).
+  "connect-src 'self' https://api.github.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://analisis.datosabiertos.jcyl.es",
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",
