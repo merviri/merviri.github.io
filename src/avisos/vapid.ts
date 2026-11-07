@@ -4,4 +4,4 @@
  * la privada está solo en el secreto VAPID_PRIVADA de merviri/datos.
  * Vacía = avisos desactivados en esta versión.
  */
-export const VAPID_PUBLICA = "";
+export const VAPID_PUBLICA = "BNSRD-ny2M3GEV9rubUcDKT9fhpIYJD3CgAt52Fp5a_-0grouu3jtuhvb11VB4CkILuyk_gzvuIqTUuTlHXq9rA";
