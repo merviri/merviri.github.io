@@ -38,6 +38,23 @@ Los datos se guardan **cifrados** en el repositorio privado `merviri/datos`.
    3. Guarda el código de recuperación.
 5. **Móvil de María**: en el móvil de Elvira, Ajustes → «Vincular otro dispositivo». María escanea el QR con la cámara y escribe la contraseña. Después, en Chrome: menú ⋮ → «Instalar aplicación».
 
+## Avisos (notificaciones)
+
+Cada móvil se suscribe en Ajustes → Avisos (Push API del navegador). Su dirección y sus claves se guardan cifradas en `datos/suscripciones.json`.
+
+- **Al momento** (dibujo, ❤️, «recuérdaselo», tarea nueva, cosas en una lista):
+  1. El móvil que hace el cambio cifra el aviso para cada móvil de la otra (RFC 8291).
+  2. Lanza el flujo `avisos.yml` de `merviri/datos` (`workflow_dispatch`).
+  3. El flujo lo firma con la clave VAPID (secreto `VAPID_PRIVADA`) y lo entrega al servicio de avisos.
+
+  Los avisos se juntan unos segundos para gastar menos.
+- **Con hora** (resumen de la mañana a las 9:00, aniversarios y días redondos):
+  - Cuando cambian las tareas o la pareja, la app recalcula los próximos 7 días y deja los avisos ya cifrados en `avisos/programados.json`.
+  - El mismo flujo se ejecuta cada hora y manda los que tocan.
+- **Privacidad**: ni GitHub ni Google pueden leer el contenido; solo ven que se manda un aviso y a qué dirección.
+- **Coste**: cada ejecución gasta 1 minuto de los 2.000 gratuitos al mes de la organización. Las ejecuciones por hora son unas 500 al mes. Además hay un límite de 60 envíos al día por dispositivo.
+- **Copia del flujo**: el flujo y su script están también en `avisos-datos/` de este repositorio (con pruebas en `tests/avisos.test.ts`).
+
 ## Renovar el token (una vez al año)
 
 - **Crear el nuevo:** crea un token **nuevo** con los mismos ajustes. No uses «Regenerate», porque inutiliza el antiguo al momento.
@@ -87,7 +104,7 @@ Al subir a `main`, `.github/workflows/publicar.yml` pasa las pruebas, compila y 
 
 - [x] **a.** Base: icono, conexión, cifrado, sincronización, instalación, vinculación por QR, renovación del token, recuperación.
 - [x] **b.** Listas, tareas con turnos y recordatorios, notas y dibujos (con aviso al abrir la app).
-- [ ] **c.** Notificaciones (Web Push enviado por GitHub Actions).
+- [x] **c.** Avisos (Web Push): dibujos, ❤️, «recuérdaselo», tareas y listas al momento; resumen de la mañana y aniversarios con hora.
 - [ ] **d.** Calendario común, horario habitual y fechas importantes.
 - [ ] **e.** Planes y deseos, Descubrir (agenda de Valladolid, mercadillos, sitios) y recomendador.
 - [ ] **f.** Gastos tipo Tricount.

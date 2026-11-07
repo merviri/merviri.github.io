@@ -236,7 +236,11 @@ async function revisarVersion() {
 }
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible") return;
+  if (document.visibilityState !== "visible") {
+    // Al salir de la app: se envía lo pendiente y los avisos que estaban esperando.
+    if (app.fase === "lista") void app.sincronizar().then(() => app.avisador?.vaciar());
+    return;
+  }
   if (app.fase === "lista") void app.sincronizar();
   void revisarVersion();
 });

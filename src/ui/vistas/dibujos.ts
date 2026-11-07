@@ -21,6 +21,7 @@ import { haceCuanto } from "../../dominio/fechas";
 import { esIdPersona, otraPersona, type IdPersona } from "../../dominio/pareja";
 import type { Registro } from "../../sync/motor";
 import { nuevoId } from "../../util/bytes";
+import { avisarDibujo, avisarMeGusta } from "../../app/eventos";
 import { bloquearRedibujo } from "../bloqueo";
 import { confirmarPeligro, h, tostada } from "../dom";
 import { aPng, aTrazos, crearLienzo, deTrazos, type TrazoVivo } from "../lienzo";
@@ -229,6 +230,7 @@ export function vistaDibujar(app: Merviri, respondeA?: string): HTMLElement {
       const id = nuevoId();
       await app.guardar<TrazosDibujo>(rutaTrazos(id), { id: ID_TRAZOS, trazos: aTrazos(b.trazos) });
       await app.guardar<Dibujo>(RUTA_DIBUJOS, { id, para: (para.value as Destino) ?? otra, fondo: b.fondo, respondeA: b.respondeA });
+      avisarDibujo(app, id, para.value as Destino);
       borrador = null;
       bloquearRedibujo(null);
       location.hash = "#dibujos";
@@ -260,6 +262,7 @@ function accionesDibujo(app: Merviri, d: Registro<Dibujo>, trazos: TrazoVivo[] |
   corazon.addEventListener("click", async () => {
     const nuevo = !(reaccion(app, d.id, app.persona)?.megusta ?? false);
     await reaccionar(app, d.id, { megusta: nuevo, visto: reaccion(app, d.id, app.persona)?.visto ?? new Date().toISOString() });
+    if (nuevo && esIdPersona(d.por) && d.por !== app.persona) avisarMeGusta(app, d.id, d.por);
     corazon.textContent = nuevo ? "❤️ Te gusta" : "🤍 Me gusta";
     corazon.setAttribute("aria-pressed", String(nuevo));
   });

@@ -3,12 +3,12 @@
  * Solo toca ficheros de la propia app. Nunca guarda ni intercepta las
  * llamadas a la API de GitHub (ahí van los datos y el token).
  */
-const CACHE = "merviri-app-v1";
+const CACHE = "merviri-app-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE)
-      .then((c) => c.addAll(["/", "/manifest.webmanifest", "/icono.svg", "/logo.svg", "/icon-192.png"]))
+      .then((c) => c.addAll(["/", "/manifest.webmanifest", "/icono.svg", "/logo.svg", "/icon-192.png", "/badge-96.png"]))
       .then(() => self.skipWaiting()),
   );
 });
@@ -60,4 +60,46 @@ self.addEventListener("fetch", (event) => {
       return res;
     })),
   );
+});
+
+// ---------------------------------------------------------------------------
+// Avisos (Web Push). El contenido llega cifrado para este móvil; el
+// navegador lo descifra y aquí solo se muestra.
+// ---------------------------------------------------------------------------
+
+const rutaSegura = (r) => (typeof r === "string" && /^[a-z0-9/_-]{1,80}$/i.test(r) ? r : "inicio");
+
+self.addEventListener("push", (event) => {
+  let d = {};
+  try {
+    d = event.data ? event.data.json() : {};
+  } catch {
+    d = {};
+  }
+  const titulo = typeof d.t === "string" && d.t ? d.t : "Merviri ✨";
+  event.waitUntil(self.registration.showNotification(titulo, {
+    body: typeof d.b === "string" ? d.b : "",
+    icon: "/icon-192.png",
+    badge: "/badge-96.png",
+    tag: typeof d.e === "string" && d.e ? d.e : undefined,
+    renotify: typeof d.e === "string" && d.e !== "",
+    silent: d.s === 1,
+    lang: "es",
+    data: { ruta: rutaSegura(d.r) },
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(`/#${rutaSegura(event.notification.data?.ruta)}`, self.location.origin).href;
+  event.waitUntil((async () => {
+    const ventanas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const c of ventanas) {
+      if (new URL(c.url).origin === self.location.origin) {
+        await c.focus();
+        return c.navigate(url).catch(() => undefined);
+      }
+    }
+    return self.clients.openWindow(url);
+  })());
 });

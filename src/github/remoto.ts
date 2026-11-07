@@ -26,6 +26,8 @@ export interface Remoto {
   leer(ruta: string): Promise<{ texto: string; sha: string } | null>;
   /** Crea (sha = null) o reemplaza un fichero. Devuelve el sha nuevo. Si cambió antes → ErrorConflicto. */
   escribir(ruta: string, texto: string, sha: string | null, mensaje: string): Promise<string>;
+  /** Lanza un flujo de GitHub Actions del repositorio (workflow_dispatch). */
+  disparar(workflow: string, rama: string, entradas: Record<string, string>): Promise<void>;
 }
 
 export interface Conexion {

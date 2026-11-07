@@ -4,6 +4,7 @@ import { rutaElementos, type Elemento } from "../../dominio/listas";
 import { contador, esIdPersona, otraPersona } from "../../dominio/pareja";
 import { agrupar, esMia, recordatoriosPara, RUTA_TAREAS, type Tarea } from "../../dominio/tareas";
 import { campoSecreto, conBoton, h, tostada } from "../dom";
+import { tarjetaActivarAvisos } from "./avisos";
 import { texto } from "./comunes";
 import { dibujosSinVer } from "./dibujos";
 import { listasOrdenadas } from "./listas";
@@ -11,7 +12,7 @@ import { filaTarea, marcarHecha } from "./tareas";
 
 /** Lo que llegará en las próximas fases. */
 const PROXIMAMENTE: [string, string][] = [
-  ["🔔", "Avisos"], ["📅", "Calendario"], ["✨", "Planes"], ["💶", "Gastos"], ["🍝", "Menú"], ["📷", "Álbum"],
+  ["📅", "Calendario"], ["✨", "Planes"], ["💶", "Gastos"], ["🍝", "Menú"], ["📷", "Álbum"],
 ];
 
 const DIA_SEMANA = new Intl.DateTimeFormat("es-ES", { weekday: "long", timeZone: "Europe/Madrid" });
@@ -59,6 +60,8 @@ export function vistaInicio(app: Merviri): HTMLElement {
         h("span", { class: "crece" }, h("b", {}, nuevos.length === 1 ? "Tienes un dibujo nuevo" : `Tienes ${nuevos.length} dibujos nuevos`)),
         h("span", { class: "flecha", "aria-hidden": "true" }, "›"))
       : null,
+
+    tarjetaActivarAvisos(app),
 
     app.tocaPracticar() ? tarjetaPractica(app) : null,
 

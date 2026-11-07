@@ -4,6 +4,7 @@ import { COLORES_NOTA, LIMITE_NOTA, notaVacia, ordenarNotas, resumen, RUTA_NOTAS
 import { esIdPersona } from "../../dominio/pareja";
 import type { Registro } from "../../sync/motor";
 import { nuevoId } from "../../util/bytes";
+import { avisarNota } from "../../app/eventos";
 import { confirmarPeligro, h, tostada } from "../dom";
 import { volver } from "./comunes";
 
@@ -47,8 +48,10 @@ export function vistaNota(app: Merviri, id: string): HTMLElement {
   const guardar = async () => {
     if (temporizador) { clearTimeout(temporizador); temporizador = null; }
     nota = { ...nota, titulo: titulo.value, texto: cuerpo.value };
-    if (notaVacia(nota) && !app.uno<Nota>(RUTA_NOTAS, id)) return;
+    const eraNueva = !app.uno<Nota>(RUTA_NOTAS, id);
+    if (notaVacia(nota) && eraNueva) return;
     await app.guardar<Nota>(RUTA_NOTAS, nota);
+    if (eraNueva) avisarNota(app, nota);
     estado.textContent = "Guardado";
   };
   const programar = () => {

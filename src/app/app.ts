@@ -11,7 +11,11 @@ import {
 } from "../cifrado/llavero";
 import { abrirSobre, type ClaveDatos } from "../cifrado/sobre";
 import { crearVinculo } from "../cifrado/vinculo";
+import { desuscribirse, permisoAvisos, suscribirse, suscripcionActual } from "../avisos/suscripcion";
 import { estadoToken, huellaToken, ID_ACCESO, RUTA_ACCESO, type Acceso } from "../dominio/acceso";
+import { PREFERENCIAS_INICIALES, RUTA_SUSCRIPCIONES, type Preferencias, type Suscripcion } from "../dominio/avisos";
+import { RUTA_TAREAS } from "../dominio/tareas";
+import { Avisador } from "./avisador";
 import { REFRESCO_DISPOSITIVO_MS, RUTA_DISPOSITIVOS, type Dispositivo } from "../dominio/dispositivos";
 import { hoy, sumarDias, type Fecha } from "../dominio/fechas";
 import { ID_PAREJA, PAREJA_INICIAL, problemaPareja, RUTA_PAREJA, type IdPersona, type Pareja } from "../dominio/pareja";
@@ -70,6 +74,7 @@ export class Merviri {
   llavero: Llavero | null = null;
   practica: Practica | null = null;
   motor: Motor | null = null;
+  avisador: Avisador | null = null;
   private remoto: Remoto | null = null;
   private cifrado: AlmacenCifrado | null = null;
   private claveDatos: ClaveDatos | null = null;
@@ -121,12 +126,22 @@ export class Merviri {
     this.motor = new Motor(this.cifrado, this.claveDatos, this.remoto);
     await this.motor.iniciar();
     this.motor.alCambiar((rutas) => void this.alCambiarDatos(rutas));
+    this.avisador = new Avisador(this);
   }
 
   private async alCambiarDatos(rutas: Set<string>) {
     if (rutas.has(RUTA_ACCESO)) await this.revisarAcceso().catch(() => undefined);
-    if (rutas.has("__raiz__")) await this.refrescarLlavero().catch(() => undefined);
+    if (rutas.has(`__raiz__:${RUTA_LLAVERO}`)) await this.refrescarLlavero().catch(() => undefined);
+    if (rutas.has(RUTA_TAREAS) || rutas.has(RUTA_PAREJA) || rutas.has(RUTA_SUSCRIPCIONES)) this.avisador?.programar();
     this.avisar([...rutas].join(","));
+  }
+
+  /** Para el avisador: acceso al repositorio y al almacén cifrado del dispositivo. */
+  remotoActual(): Remoto | null {
+    return this.remoto;
+  }
+  almacenLocal(): AlmacenCifrado | null {
+    return this.cifrado;
   }
 
   sincronizar(): Promise<void> {
@@ -141,6 +156,54 @@ export class Merviri {
   private async mantenimiento() {
     await this.revisarAcceso().catch(() => undefined);
     await this.registrarDispositivo().catch(() => undefined);
+    await this.revisarSuscripcion().catch(() => undefined);
+    this.avisador?.programar(15_000);
+  }
+
+  // -------------------------------------------------------------------------
+  // Avisos (notificaciones)
+  // -------------------------------------------------------------------------
+
+  miSuscripcion(): Suscripcion | undefined {
+    return this.dispositivo ? this.uno<Suscripcion>(RUTA_SUSCRIPCIONES, this.dispositivo.id) : undefined;
+  }
+
+  async activarAvisos() {
+    if (!this.dispositivo) throw new Error("Este dispositivo no está configurado.");
+    const datos = await suscribirse();
+    await this.guardar<Suscripcion>(RUTA_SUSCRIPCIONES, {
+      id: this.dispositivo.id, persona: this.persona, nombre: this.dispositivo.nombre, ...datos,
+      prefs: this.miSuscripcion()?.prefs ?? PREFERENCIAS_INICIALES,
+    });
+    await this.sincronizar();
+  }
+
+  async desactivarAvisos() {
+    await desuscribirse().catch(() => undefined);
+    if (this.miSuscripcion()) await this.borrar(RUTA_SUSCRIPCIONES, this.dispositivo!.id);
+    await this.sincronizar();
+  }
+
+  async guardarPreferencias(prefs: Preferencias) {
+    const s = this.miSuscripcion();
+    if (!s) throw new Error("Activa primero los avisos en este dispositivo.");
+    await this.guardar<Suscripcion>(RUTA_SUSCRIPCIONES, { ...s, prefs });
+  }
+
+  /** Al abrir: si el navegador cambió la suscripción (o se quitó el permiso), se actualiza. */
+  private async revisarSuscripcion() {
+    const s = this.miSuscripcion();
+    if (!s || !this.dispositivo) return;
+    if (permisoAvisos() !== "granted") {
+      await this.borrar(RUTA_SUSCRIPCIONES, s.id);
+      return;
+    }
+    const actual = await suscripcionActual(true);
+    if (!actual) return;
+    if (actual.endpoint !== s.endpoint || actual.p256dh !== s.p256dh || actual.auth !== s.auth ||
+      s.persona !== this.persona || s.nombre !== this.dispositivo.nombre) {
+      await this.guardar<Suscripcion>(RUTA_SUSCRIPCIONES, { ...s, ...actual, persona: this.persona, nombre: this.dispositivo.nombre });
+    }
   }
 
   // -------------------------------------------------------------------------

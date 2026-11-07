@@ -15,11 +15,13 @@ import {
   icono,
   tostada,
 } from "../dom";
+import { tarjetaAvisos } from "./avisos";
 import { elegirPersona, leerPersona, puntoPersona, texto } from "./comunes";
 
 export function vistaAjustes(app: Merviri): HTMLElement {
   return h("section", {},
     h("h1", {}, "Ajustes"),
+    tarjetaAvisos(app),
     tarjetaVosotras(app),
     tarjetaDispositivos(app),
     tarjetaEsteDispositivo(app),

@@ -56,6 +56,14 @@ export class RemotoMemoria implements Remoto {
     return f ? { ...f } : null;
   }
 
+  /** Flujos lanzados (para comprobar en las pruebas y en desarrollo). */
+  disparos: { workflow: string; rama: string; entradas: Record<string, string> }[] = [];
+
+  async disparar(workflow: string, rama: string, entradas: Record<string, string>): Promise<void> {
+    this.comprobarRed();
+    this.disparos.push({ workflow, rama, entradas });
+  }
+
   async escribir(ruta: string, texto: string, sha: string | null, _mensaje = ""): Promise<string> {
     this.comprobarRed();
     if (this.antesDeEscribir) await this.antesDeEscribir(ruta);

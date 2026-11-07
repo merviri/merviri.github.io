@@ -18,6 +18,7 @@ import {
 } from "../../dominio/tareas";
 import type { Registro } from "../../sync/motor";
 import { nuevoId } from "../../util/bytes";
+import { avisarRecordatorio, avisarTarea } from "../../app/eventos";
 import { campo, dialogoFormulario, h, tostada } from "../dom";
 import { texto } from "./comunes";
 
@@ -88,6 +89,7 @@ export function filaTarea(app: Merviri, t: Registro<Tarea>, hoyF: Fecha): HTMLEl
           await app.guardar<Tarea>(RUTA_TAREAS, {
             ...t, recordatorio: { por: app.persona, para: otra, en: new Date().toISOString(), visto: null },
           });
+          avisarRecordatorio(app, t, otra);
           tostada(`${pareja.personas[otra].nombre} lo verá al abrir Merviri 🔔`);
         },
       }, "🔔")
@@ -231,5 +233,6 @@ export async function editarTarea(app: Merviri, t: Registro<Tarea> | null) {
     const p = problemaTarea(nueva);
     if (p) throw new Error(p);
     await app.guardar<Tarea>(RUTA_TAREAS, nueva);
+    avisarTarea(app, nueva, t);
   });
 }

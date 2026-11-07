@@ -18,5 +18,12 @@ export function remotoFalso(nombre: string): Remoto {
     blob: (sha) => (fresco(), r.blob(sha)),
     leer: (ruta) => (fresco(), r.leer(ruta)),
     escribir: (ruta, texto, sha, mensaje) => (fresco(), r.escribir(ruta, texto, sha, mensaje)),
+    // Los avisos no salen de verdad en desarrollo: se apuntan para poder revisarlos.
+    disparar: async (workflow, rama, entradas) => {
+      const k = `merviri-falso-avisos:${nombre}`;
+      const lista = JSON.parse(localStorage.getItem(k) ?? "[]") as unknown[];
+      lista.push({ workflow, rama, entradas, cuando: new Date().toISOString() });
+      localStorage.setItem(k, JSON.stringify(lista.slice(-50)));
+    },
   };
 }

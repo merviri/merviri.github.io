@@ -170,6 +170,10 @@ export class Motor {
     return this.cola.length;
   }
 
+  get rama(): string {
+    return this.indice.rama;
+  }
+
   /** sha actual de un fichero fuera de datos/ (para saber si cambió). */
   shaRaiz(ruta: string): string | undefined {
     return this.indice.raiz[ruta];
@@ -313,12 +317,12 @@ export class Motor {
         cambiadas.add(ruta);
       }
     }
-    const cambioRaiz = Object.keys(raiz).some((r) => raiz[r] !== this.indice.raiz[r]);
+    // Ficheros de fuera de datos/ que han cambiado (llavero.json, avisos/…): «__raiz__:<ruta>».
+    for (const r of Object.keys(raiz)) if (raiz[r] !== this.indice.raiz[r]) cambiadas.add(`__raiz__:${r}`);
     this.indice.raiz = raiz;
     // Si algún fichero no se pudo leer, no se guarda el etag: se reintentará.
     if (!fallo) this.indice.etag = arbol.etag;
     await this.almacen.set("motor:indice", this.indice);
-    if (cambioRaiz) cambiadas.add("__raiz__");
     this.emitir(cambiadas);
     return fallo;
   }

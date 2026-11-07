@@ -127,6 +127,18 @@ export class ClienteGitHub implements Remoto {
     return { texto: desdeUtf8(desdeBase64(b.content)), sha: b.sha };
   }
 
+  async disparar(workflow: string, rama: string, entradas: Record<string, string>): Promise<void> {
+    if (!/^[A-Za-z0-9._-]+\.ya?ml$/.test(workflow)) throw new ErrorRemoto("Nombre de flujo no válido.");
+    const res = await this.pedir(this.url(`/actions/workflows/${workflow}/dispatches`), {
+      method: "POST",
+      headers: this.cabeceras({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ ref: rama, inputs: entradas }),
+      cache: "no-store",
+    });
+    if (res.status === 404) throw new ErrorRemoto("No se encuentra el flujo de avisos en el repositorio de datos.", 404);
+    if (!res.ok) await this.fallo(res, "Mandar avisos");
+  }
+
   escribir(ruta: string, texto: string, sha: string | null, mensaje: string): Promise<string> {
     const hacer = async () => {
       const cuerpo: Record<string, unknown> = { message: mensaje, content: aBase64(utf8(texto)) };

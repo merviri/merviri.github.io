@@ -45,6 +45,13 @@ const redondeado = svg(`<rect width="100" height="100" rx="22" fill="#FFFFFF"/>`
 const completo = svg(`<rect width="100" height="100" fill="#FFFFFF"/>`, 0.92);
 const adaptable = svg(`<rect width="100" height="100" fill="#FFFFFF"/>`, 0.66);
 const logo = svg("", 1);
+// Icono pequeño de la barra de notificaciones de Android: solo la silueta, en blanco.
+const insignia = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <g transform="translate(50 50) scale(0.92) translate(-50 -50)" fill="#FFFFFF">
+    <path d="${destello(38, 50)}"/><path d="${destello(62, 50)}"/>
+  </g>
+</svg>
+`;
 
 function png(fuente, lado, fichero) {
   const r = new Resvg(fuente, { fitTo: { mode: "width", value: lado } });
@@ -57,4 +64,5 @@ png(redondeado, 192, "icon-192.png");
 png(redondeado, 512, "icon-512.png");
 png(adaptable, 512, "icon-maskable-512.png");
 png(completo, 180, "apple-touch-icon.png");
+png(insignia, 96, "badge-96.png");
 console.log("Iconos generados en public/");

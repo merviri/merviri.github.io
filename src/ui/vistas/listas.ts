@@ -14,6 +14,7 @@ import {
 } from "../../dominio/listas";
 import type { Registro } from "../../sync/motor";
 import { nuevoId } from "../../util/bytes";
+import { avisarElemento } from "../../app/eventos";
 import { campo, confirmarPeligro, dialogoFormulario, h, tostada } from "../dom";
 import { texto, volver } from "./comunes";
 
@@ -103,6 +104,7 @@ export function vistaLista(app: Merviri, id: string): HTMLElement {
     void app.guardar<Elemento>(ruta, {
       id: nuevoId(), texto: t, cantidad, nota: null, hecho: false, hechoPor: null, hechoEn: null, orden: -Date.now(),
     });
+    avisarElemento(app, lista, cantidad ? `${cantidad} ${t}` : t);
   });
 
   const fila = (e: Registro<Elemento>) => {
