@@ -168,6 +168,7 @@ export function vistaPlan(app: Merviri, id: string): HTMLElement {
     h("div", { class: "botones arriba" },
       p.estado !== "hecho" ? h("button", { type: "button", class: "boton boton-primario", onclick: () => void ponerFecha(app, p) }, p.estado === "planificado" ? "📅 Cambiar fecha" : "📅 Ponerle fecha") : null,
       h("button", { type: "button", class: "boton", onclick: () => void marcarHecho(app, p) }, "✅ ¡Hecho!"),
+      h("a", { class: "boton", href: `#album/plan-${p.id}` }, "📷 Fotos"),
       h("button", { type: "button", class: "boton", onclick: () => void editarPlan(app, p) }, "Editar"),
       p.estado === "descartado"
         ? h("button", { type: "button", class: "boton", onclick: () => void app.guardar<Plan>(RUTA_PLANES, { ...p, estado: "idea" }) }, "Recuperar")
@@ -258,7 +259,7 @@ async function marcarHecho(app: Merviri, p: Registro<Plan>) {
       ...p, estado: p.repetible ? "idea" : "hecho", hechoEn: hoy(), valoracion: v >= 1 && v <= 5 ? v : null,
       comentario: texto(d, "comentario").trim() || null, eventoId: p.repetible ? null : p.eventoId, fecha: p.repetible ? null : p.fecha,
     });
-    tostada("¡Qué bien! ✨ (Pronto podréis subir las fotos al álbum)");
+    tostada("¡Qué bien! ✨ ¿Subís las fotos?", "info", { texto: "📷 Fotos", hacer: () => { location.hash = `#album/plan-${p.id}`; } });
   });
 }
 

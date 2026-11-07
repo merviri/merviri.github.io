@@ -86,7 +86,11 @@ datos/gastos/<bote>.json    gastos y pagos de cada bote (importes en céntimos)
 datos/gastos/fijos.json     gastos fijos que se apuntan solos cada mes
 datos/recetas.json          recetas (ingredientes y pasos)
 datos/menu/<año>.json       menú: un registro por día y comida
+datos/album/<año>.json      ficha de cada foto (repositorio, fecha, álbumes, favorita, papelera)
+datos/album/albumes.json    álbumes (también los de los planes)
 ```
+
+Las fotos van en `merviri/fotos-1` … `fotos-5` como `fotos/AAAA/MM/<id>.mini|.vista|.orig`, cifradas (`MRV1` + id de clave + IV + AES-GCM). Vaciar la papelera rehace ese repositorio sin las fotos borradas y sin historial (commit sin padres), así el espacio se libera de verdad.
 
 Todos los ficheros de `datos/` van cifrados.
 
@@ -120,7 +124,7 @@ Al subir a `main`, `.github/workflows/publicar.yml` pasa las pruebas, compila y 
 - [x] **e.** Planes y deseos (plazo, dificultad, duración, coste, reserva, clima, temporada, ganas de cada una), Descubrir (catálogo, agenda de la Junta, fechas especiales, sitios cercanos) y «¿Qué hacemos?» (huecos libres + tiempo de Open-Meteo).
 - [x] **f.** Gastos tipo Tricount: botes (Casa y viajes con amigos), repartos a partes iguales, por partes o por importes, saldos y cómo saldar, varias monedas (cambio del BCE), gastos fijos mensuales, resumen y CSV.
 - [x] **g.** Recetas, menú semanal (comida y cena, quién cocina) y lista de la compra por secciones del súper.
-- [ ] **h.** Álbum compartido con fotos originales.
+- [x] **h.** Álbum compartido: originales cifrados (y miniatura y vista), por meses, álbumes y álbumes de planes, favoritas, papelera que libera espacio de verdad, ZIP para el ordenador y «Compartir → Merviri» desde la galería de Android.
 - [ ] **i.** Cosas de pareja: pregunta del día, votaciones, cápsulas del tiempo…
 
 ## Licencias de terceros

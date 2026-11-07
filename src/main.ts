@@ -3,6 +3,7 @@ import "./ui/estilos.css";
 import { Merviri, VERSION_APP, type CrearRemoto } from "./app/app";
 import { codigoDeHash } from "./cifrado/vinculo";
 import { ClienteGitHub } from "./github/cliente";
+import { ClienteFotos, FotosMemoria } from "./github/fotos";
 import { AlmacenIdb } from "./local/almacen";
 import { hoy } from "./dominio/fechas";
 import { esMia, RUTA_TAREAS, type Tarea } from "./dominio/tareas";
@@ -13,6 +14,8 @@ import { vistaBienvenida } from "./ui/vistas/bienvenida";
 import { vistaCalendario } from "./ui/vistas/calendario";
 import { vistaDescubrir } from "./ui/vistas/descubrir";
 import { vistaBote, vistaGastos } from "./ui/vistas/gastos";
+import { vistaAlbum, vistaFoto } from "./ui/vistas/album";
+import { vistaCompartido } from "./ui/vistas/compartido";
 import { vistaMas } from "./ui/vistas/mas";
 import { vistaMenu, vistaReceta, vistaRecetas } from "./ui/vistas/menu";
 import { vistaPlan, vistaPlanes } from "./ui/vistas/planes";
@@ -38,6 +41,18 @@ if (DEV) {
 }
 
 const app = new Merviri(new AlmacenIdb(`merviri${sufijo}`), crearRemoto);
+{
+  // Repositorios de fotos: en desarrollo (token «falso…») van en memoria.
+  const falsos = new Map<string, FotosMemoria>();
+  app.usarFotos((c, nombre) => {
+    if (DEV && c.token.startsWith("falso")) {
+      let r = falsos.get(nombre);
+      if (!r) { r = new FotosMemoria(nombre); falsos.set(nombre, r); }
+      return r;
+    }
+    return new ClienteFotos(c.propietario, nombre, c.token);
+  });
+}
 
 // El código de un enlace de vinculación se guarda en memoria y se quita de la barra de direcciones.
 let codigoVinculo = codigoDeHash(location.hash);
@@ -51,6 +66,9 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
   planes: (a) => vistaPlanes(a),
   gastos: (a) => vistaGastos(a),
   menu: (a) => vistaMenu(a),
+  album: (a, p) => vistaAlbum(a, p),
+  foto: (a, p) => vistaFoto(a, p),
+  compartido: (a) => vistaCompartido(a),
   recetas: (a) => vistaRecetas(a),
   receta: (a, p) => vistaReceta(a, p),
   bote: (a, p) => vistaBote(a, p),
@@ -71,14 +89,15 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
 };
 /** Pestaña de la barra inferior a la que pertenece cada ruta. */
 const PESTANA: Record<string, string> = {
-  lista: "listas", plan: "planes", gastos: "mas", bote: "mas", menu: "mas", recetas: "mas", receta: "mas", descubrir: "planes", "que-hacemos": "planes", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
+  lista: "listas", plan: "planes", gastos: "mas", bote: "mas", menu: "mas", recetas: "mas", receta: "mas", album: "mas", foto: "mas", descubrir: "planes", "que-hacemos": "planes", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
 };
 
 function ruta(): { nombre: string; param: string } {
   const [nombre = "", ...resto] = location.hash.slice(1).split("/");
   const param = resto.join("/");
   if (!(nombre in VISTAS)) return { nombre: "inicio", param: "" };
-  if (["lista", "nota", "dibujo", "plan", "bote", "receta"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
+  if (["lista", "nota", "dibujo", "plan", "bote", "receta", "foto"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
+  if (nombre === "album" && param && !/^[A-Za-z0-9_-]{1,60}$/.test(param)) return { nombre, param: "" };
   if (nombre === "calendario" && param && !/^\d{4}-\d{2}-\d{2}$/.test(param)) return { nombre, param: "" };
   return { nombre, param };
 }

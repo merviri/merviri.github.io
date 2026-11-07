@@ -6,6 +6,7 @@ import type { Lista } from "../dominio/listas";
 import { resumen, type Nota } from "../dominio/notas";
 import type { Plan } from "../dominio/planes";
 import { dinero, type Bote, type Gasto } from "../dominio/gastos";
+import type { Album } from "../dominio/album";
 import { otraPersona, type IdPersona } from "../dominio/pareja";
 import { aQuien, type Tarea } from "../dominio/tareas";
 import type { Merviri } from "./app";
@@ -113,5 +114,19 @@ export function avisarGasto(app: Merviri, b: Bote, g: Gasto) {
       t: `💶 ${b.emoji} ${b.nombre}`,
       b: `${quien} ha apuntado ${textos.length === 1 ? textos[0] : enumerar(textos)}`, r: `bote/${b.id}`, e: `gastos-${b.id}`,
     }),
+  });
+}
+
+export function avisarFotos(app: Merviri, n: number, album: Album | null) {
+  const quien = yo(app);
+  app.avisador?.encolar({
+    tipo: "foto", para: otraPersona(app.persona), clave: album?.id ?? "fotos", texto: String(n),
+    aviso: (ns) => {
+      const total = ns.reduce((a, x) => a + Number(x), 0);
+      return {
+        t: `📷 ${quien} ha subido ${total === 1 ? "una foto" : `${total} fotos`}`,
+        b: album ? `${album.emoji} ${album.nombre}` : "Al álbum de Merviri", r: album ? `album/${album.id}` : "album", e: `fotos-${album?.id ?? "todas"}`,
+      };
+    },
   });
 }

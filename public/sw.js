@@ -3,7 +3,8 @@
  * Solo toca ficheros de la propia app. Nunca guarda ni intercepta las
  * llamadas a la API de GitHub (ahí van los datos y el token).
  */
-const CACHE = "merviri-app-v2";
+const CACHE = "merviri-app-v3";
+const COMPARTIDO = "merviri-compartido";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -16,7 +17,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== COMPARTIDO).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -33,6 +34,31 @@ self.addEventListener("message", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
+  // «Compartir → Merviri» (Android): se guarda lo que llega y se abre la app.
+  if (req.method === "POST" && url.origin === self.location.origin && url.pathname === "/compartir") {
+    event.respondWith((async () => {
+      try {
+        const datos = await req.formData();
+        await caches.delete(COMPARTIDO);
+        const cache = await caches.open(COMPARTIDO);
+        let n = 0;
+        for (const f of datos.getAll("fotos")) {
+          if (!(f instanceof File) || !f.size) continue;
+          await cache.put(`/compartido/archivo-${n++}`, new Response(f, { headers: {
+            "Content-Type": f.type || "application/octet-stream", "X-Nombre": encodeURIComponent(f.name || "foto"), "X-Fecha": String(f.lastModified || Date.now()),
+          } }));
+        }
+        const campo = (k) => { const v = datos.get(k); return typeof v === "string" && v ? v : null; };
+        await cache.put("/compartido/meta", new Response(JSON.stringify({ titulo: campo("title"), texto: campo("text"), url: campo("url"), n }), {
+          headers: { "Content-Type": "application/json" },
+        }));
+      } catch {
+        /* si algo falla, se abre la app igualmente */
+      }
+      return Response.redirect("/#compartido", 303);
+    })());
+    return;
+  }
   if (req.method !== "GET" || url.origin !== self.location.origin) return;
   // version.json siempre de la red: sirve para avisar de versiones nuevas.
   if (url.pathname === "/version.json") return;

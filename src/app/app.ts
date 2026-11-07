@@ -17,7 +17,9 @@ import { PREFERENCIAS_INICIALES, RUTA_SUSCRIPCIONES, type Preferencias, type Sus
 import { PREFIJO_CALENDARIO, rutaDeEvento, type Evento } from "../dominio/calendario";
 import { gastosFijosDelMes, RUTA_FIJOS, rutaGastos, type Gasto, type GastoFijo } from "../dominio/gastos";
 import { RUTA_TAREAS } from "../dominio/tareas";
+import { ServicioAlbum } from "./album";
 import { Avisador } from "./avisador";
+import type { RepoFotos } from "../github/fotos";
 import { REFRESCO_DISPOSITIVO_MS, RUTA_DISPOSITIVOS, type Dispositivo } from "../dominio/dispositivos";
 import { hoy, sumarDias, type Fecha } from "../dominio/fechas";
 import { ID_PAREJA, PAREJA_INICIAL, problemaPareja, RUTA_PAREJA, type IdPersona, type Pareja } from "../dominio/pareja";
@@ -77,6 +79,8 @@ export class Merviri {
   practica: Practica | null = null;
   motor: Motor | null = null;
   avisador: Avisador | null = null;
+  album: ServicioAlbum | null = null;
+  private fabricaFotos: ((c: Conexion, nombre: string) => RepoFotos) | null = null;
   private remoto: Remoto | null = null;
   private cifrado: AlmacenCifrado | null = null;
   private claveDatos: ClaveDatos | null = null;
@@ -129,6 +133,18 @@ export class Merviri {
     await this.motor.iniciar();
     this.motor.alCambiar((rutas) => void this.alCambiarDatos(rutas));
     this.avisador = new Avisador(this);
+    this.crearAlbum();
+  }
+
+  /** Cómo se crean los clientes de los repositorios de fotos (GitHub o, en desarrollo, en memoria). */
+  usarFotos(f: (c: Conexion, nombre: string) => RepoFotos) {
+    this.fabricaFotos = f;
+  }
+
+  private crearAlbum() {
+    const c = this.conexion;
+    const f = this.fabricaFotos;
+    this.album = c && f && this.claveDatos ? new ServicioAlbum(this, (n) => f(c, n), this.claveDatos, this.base) : null;
   }
 
   private async alCambiarDatos(rutas: Set<string>) {
@@ -438,6 +454,7 @@ export class Merviri {
     await this.cifrado!.set(KC.conexion, this.conexion);
     this.remoto = this.crearRemoto(this.conexion);
     this.motor!.setRemoto(this.remoto);
+    this.crearAlbum();
   }
 
   /** Si otro dispositivo dejó un token nuevo, se prueba y se adopta. */

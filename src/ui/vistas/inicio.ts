@@ -11,6 +11,7 @@ import { dibujosSinVer } from "./dibujos";
 import { diaLargo } from "./evento";
 import { saldoCasa } from "./gastos";
 import { platoDeHoy } from "./menu";
+import { haceUnAnio, tiraDeFotos } from "./album";
 import { listasOrdenadas } from "./listas";
 import { filaTarea, marcarHecha } from "./tareas";
 
@@ -33,6 +34,7 @@ export function vistaInicio(app: Merviri): HTMLElement {
   const cal = eventosDeHoyYProximos(app);
   const casa = saldoCasa(app);
   const menu = platoDeHoy(app);
+  const recuerdos = haceUnAnio(app);
   const listas = listasOrdenadas(app)
     .map((l) => ({ l, n: app.lista<Elemento>(rutaElementos(l.id)).filter((e) => !e.hecho).length }))
     .filter((x) => x.n > 0)
@@ -118,6 +120,8 @@ export function vistaInicio(app: Merviri): HTMLElement {
           h("span", { class: "flecha", "aria-hidden": "true" }, "›"))))),
       ]
       : null,
+
+    recuerdos.length ? [h("h2", { class: "arriba-mas" }, "📷 Un día como hoy"), tiraDeFotos(app, recuerdos)] : null,
 
     menu ? h("a", { class: "tarjeta-enlace arriba-mas", href: "#menu" },
       h("span", { class: "emoji-grande", "aria-hidden": "true" }, "🍝"),
