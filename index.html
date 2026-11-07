@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#FFF7FA" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#17111A" media="(prefers-color-scheme: dark)" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex" />
+    <title>Merviri</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icono.svg" type="image/svg+xml" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  </head>
+  <body>
+    <header class="cabecera">
+      <a class="marca" href="#inicio" aria-label="Merviri, inicio">
+        <img src="/logo.svg" alt="" width="34" height="34" />
+        <span>Merviri</span>
+      </a>
+      <div id="estado" class="estado" aria-live="polite"></div>
+      <a id="ir-ajustes" class="boton-icono" href="#ajustes" aria-label="Ajustes" hidden></a>
+    </header>
+    <div id="avisos" class="avisos" aria-live="polite"></div>
+    <main id="principal"></main>
+    <div id="tostadas" class="tostadas" aria-live="polite"></div>
+    <noscript>Merviri necesita JavaScript.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

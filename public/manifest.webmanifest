@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "Merviri",
+  "short_name": "Merviri",
+  "description": "La app de Elvira y María.",
+  "lang": "es",
+  "start_url": "/#inicio",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF7FA",
+  "theme_color": "#FFF7FA",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

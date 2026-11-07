@@ -1,0 +1,287 @@
+/*
+ * Merviri ✨
+ * Rosa (María) como color principal, turquesa (Elvira) y morado para lo de
+ * las dos. Tipografía redondeada (Nunito). Modo claro y oscuro.
+ * Los textos en color usan siempre el tono oscuro (o claro, en modo oscuro)
+ * de su familia para que se lean bien.
+ */
+:root {
+  color-scheme: light;
+  --fondo: #FFF7FA;
+  --superficie: #FFFFFF;
+  --superficie-2: #FBEFF4;
+  --texto: #2B1E27;
+  --texto-2: #6B5763;
+  --borde: #EEDFE6;
+  --borde-fuerte: #DCC6D1;
+
+  --rosa: #D4537E;
+  --rosa-boton: #C2466F;
+  --rosa-boton-hover: #AC3B61;
+  --sobre-rosa: #FFFFFF;
+  --rosa-suave: #FBEAF0;
+  --rosa-texto: #72243E;
+  --rosa-titulo: #C2466F;
+
+  --turquesa: #17B3B0;
+  --turquesa-suave: #DDF6F5;
+  --turquesa-texto: #0A5654;
+  --turquesa-titulo: #0E8A87;
+
+  --morado: #534AB7;
+  --morado-suave: #EEEDFE;
+  --morado-texto: #3C3489;
+
+  --peligro: #B42318;
+  --peligro-suave: #FDECEA;
+  --aviso-suave: #FFF4D6;
+  --aviso-texto: #6B4A00;
+  --exito: #17803D;
+  --foco: #534AB7;
+
+  --radio: 14px;
+  --radio-s: 10px;
+  --sombra: 0 1px 2px rgb(114 36 62 / 6%), 0 4px 16px rgb(114 36 62 / 6%);
+  --letra: "Nunito Variable", "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --fondo: #17111A;
+    --superficie: #221A26;
+    --superficie-2: #2C2231;
+    --texto: #F7EEF3;
+    --texto-2: #C4B3BE;
+    --borde: #3A2E3F;
+    --borde-fuerte: #4E3F55;
+
+    --rosa: #ED93B1;
+    --rosa-boton: #ED93B1;
+    --rosa-boton-hover: #F4B0C6;
+    --sobre-rosa: #3A0F20;
+    --rosa-suave: #4B1528;
+    --rosa-texto: #F4C0D1;
+    --rosa-titulo: #ED93B1;
+
+    --turquesa: #3FD0CC;
+    --turquesa-suave: #0B3B3A;
+    --turquesa-texto: #A6ECEA;
+    --turquesa-titulo: #3FD0CC;
+
+    --morado: #AFA9EC;
+    --morado-suave: #26215C;
+    --morado-texto: #CECBF6;
+
+    --peligro: #FF8A80;
+    --peligro-suave: #4A1A17;
+    --aviso-suave: #3D3012;
+    --aviso-texto: #FFE08A;
+    --exito: #6FD08E;
+    --foco: #AFA9EC;
+    --sombra: none;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 400 1rem/1.55 var(--letra);
+  -webkit-font-smoothing: antialiased;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+}
+h1, h2, h3 { line-height: 1.2; margin: 0 0 0.6rem; font-weight: 800; }
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.2rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0 0 0.8rem; }
+a { color: var(--rosa-texto); text-underline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; border-radius: 6px; }
+[hidden] { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Cabecera */
+.cabecera {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: color-mix(in srgb, var(--fondo) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--borde);
+}
+.marca { display: flex; align-items: center; gap: 0.5rem; text-decoration: none; color: var(--texto); font-weight: 800; font-size: 1.2rem; }
+.marca img { display: block; }
+.estado { margin-left: auto; font-size: 0.85rem; color: var(--texto-2); display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
+.estado .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--texto-2); flex: none; }
+.estado .ok { background: var(--exito); }
+.estado .va { background: var(--morado); animation: latido 1.2s ease-in-out infinite; }
+.estado .mal { background: var(--peligro); }
+.estado .espera { background: #E0A100; }
+.estado button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.5rem; border-radius: 999px; }
+.estado button:hover { background: var(--superficie-2); }
+@keyframes latido { 50% { opacity: 0.35; } }
+
+.boton-icono {
+  display: inline-grid; place-items: center; width: 42px; height: 42px; flex: none;
+  border-radius: 50%; border: 0; background: transparent; color: var(--texto); cursor: pointer; text-decoration: none;
+}
+.boton-icono:hover { background: var(--superficie-2); }
+.icono { display: block; }
+
+/* Contenido */
+main { max-width: 640px; margin: 0 auto; padding: 1.1rem 1rem 3rem; }
+.avisos { max-width: 640px; margin: 0 auto; padding: 0 1rem; }
+.aviso {
+  margin-top: 0.8rem; padding: 0.75rem 1rem; border-radius: var(--radio-s);
+  background: var(--aviso-suave); color: var(--aviso-texto); display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+}
+.aviso p { margin: 0; flex: 1 1 14rem; }
+.aviso-error { background: var(--peligro-suave); color: var(--peligro); }
+
+.tarjeta {
+  background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio);
+  padding: 1.1rem 1.15rem; margin-bottom: 1rem; box-shadow: var(--sombra);
+}
+.tarjeta > :last-child { margin-bottom: 0; }
+.tarjeta-morada { background: var(--morado-suave); border-color: transparent; color: var(--morado-texto); }
+.tarjeta-rosa { background: var(--rosa-suave); border-color: transparent; color: var(--rosa-texto); }
+.secundario { color: var(--texto-2); }
+.pequeno { font-size: 0.88rem; }
+.centro { text-align: center; }
+
+.volver { display: inline-flex; align-items: center; gap: 0.2rem; margin: -0.3rem 0 0.6rem -0.5rem; color: var(--texto-2); text-decoration: none; font-weight: 700; padding: 0.3rem 0.5rem; border-radius: 999px; }
+.volver:hover { background: var(--superficie-2); }
+
+/* Botones */
+.boton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+  min-height: 46px; padding: 0.6rem 1.15rem; border-radius: 999px;
+  font: inherit; font-weight: 800; cursor: pointer; text-decoration: none;
+  border: 1.5px solid var(--borde-fuerte); background: var(--superficie); color: var(--texto);
+}
+.boton:hover { background: var(--superficie-2); }
+.boton:disabled { opacity: 0.6; cursor: progress; }
+.boton-primario { background: var(--rosa-boton); border-color: var(--rosa-boton); color: var(--sobre-rosa); }
+.boton-primario:hover { background: var(--rosa-boton-hover); border-color: var(--rosa-boton-hover); }
+.boton-peligro { color: var(--peligro); border-color: currentColor; }
+.boton-peligro:hover { background: var(--peligro-suave); }
+.boton-ancho { width: 100%; }
+.botones { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.8rem; }
+.botones-columna { display: grid; gap: 0.6rem; margin-top: 1rem; }
+.enlace-boton { all: unset; color: var(--rosa-texto); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; font-weight: 700; }
+
+/* Formularios */
+.formulario { display: grid; gap: 0.9rem; }
+.campo { display: grid; gap: 0.3rem; }
+.campo label, .grupo-titulo { font-weight: 800; font-size: 0.95rem; }
+.campo input, .campo select, .campo textarea {
+  width: 100%; min-height: 46px; padding: 0.55rem 0.8rem; font: inherit; color: var(--texto);
+  background: var(--superficie); border: 1.5px solid var(--borde-fuerte); border-radius: var(--radio-s);
+}
+.campo input:focus { border-color: var(--foco); outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--foco) 25%, transparent); }
+.ayuda { margin: 0; font-size: 0.86rem; color: var(--texto-2); }
+.error { color: var(--peligro); font-weight: 700; margin: 0; }
+.error:empty { display: none; }
+.fila-secreto { display: flex; gap: 0.4rem; align-items: center; }
+.fila-secreto input { flex: 1; }
+.boton-ver[aria-pressed="true"] { color: var(--rosa-texto); background: var(--rosa-suave); }
+.casilla { display: flex; gap: 0.6rem; align-items: flex-start; }
+.casilla input { width: 1.25rem; height: 1.25rem; margin-top: 0.15rem; accent-color: var(--rosa-boton); }
+
+/* Elegir quién eres */
+.personas { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.persona-opcion { position: relative; }
+.persona-opcion input { position: absolute; opacity: 0; inset: 0; }
+.persona-opcion span {
+  display: grid; place-items: center; gap: 0.3rem; padding: 0.9rem 0.5rem; border-radius: var(--radio);
+  border: 2px solid var(--borde); font-weight: 800; cursor: pointer; background: var(--superficie);
+}
+.persona-opcion input:focus-visible + span { outline: 3px solid var(--foco); outline-offset: 2px; }
+.persona-opcion.p-turquesa input:checked + span { border-color: var(--turquesa); background: var(--turquesa-suave); color: var(--turquesa-texto); }
+.persona-opcion.p-rosa input:checked + span { border-color: var(--rosa); background: var(--rosa-suave); color: var(--rosa-texto); }
+
+.punto-persona { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; vertical-align: -0.05em; }
+.c-turquesa { background: var(--turquesa); }
+.c-rosa { background: var(--rosa); }
+.c-morado { background: var(--morado); }
+/* Nombres en títulos grandes: tono vivo (contraste suficiente para texto grande). */
+.t-turquesa { color: var(--turquesa-titulo); }
+.t-rosa { color: var(--rosa-titulo); }
+.t-morado { color: var(--morado-texto); }
+
+.pastilla { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 800; }
+.pastilla-turquesa { background: var(--turquesa-suave); color: var(--turquesa-texto); }
+.pastilla-rosa { background: var(--rosa-suave); color: var(--rosa-texto); }
+.pastilla-morado { background: var(--morado-suave); color: var(--morado-texto); }
+.pastilla-aviso { background: var(--aviso-suave); color: var(--aviso-texto); }
+
+/* Bienvenida */
+.bienvenida { text-align: center; padding-top: 1.5rem; }
+.bienvenida .logo-grande { width: 120px; height: 120px; margin: 0 auto 1rem; display: block; }
+.bienvenida h1 { font-size: 2.2rem; margin-bottom: 0.2rem; }
+.bienvenida .lema { color: var(--texto-2); font-size: 1.1rem; margin-bottom: 1.6rem; }
+.pasos { display: flex; gap: 0.35rem; justify-content: center; margin-bottom: 1rem; }
+.pasos span { width: 2rem; height: 0.35rem; border-radius: 999px; background: var(--borde); }
+.pasos span.hecho { background: var(--rosa); }
+
+/* Código de recuperación */
+.codigo {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin: 0.6rem 0 0.8rem;
+  font: 700 1.05rem/1 ui-monospace, "Cascadia Mono", Consolas, monospace; letter-spacing: 0.06em;
+}
+.codigo span { background: var(--superficie-2); border-radius: 8px; padding: 0.55rem 0; text-align: center; user-select: all; }
+
+/* Inicio */
+.saludo { margin-bottom: 1rem; }
+.saludo h1 { font-size: 1.75rem; margin-bottom: 0.1rem; }
+.contador { text-align: center; padding: 1.4rem 1rem; }
+.contador .numero { font-size: 3.2rem; font-weight: 900; line-height: 1; letter-spacing: -0.02em; }
+.contador .etiqueta { font-weight: 800; margin-top: 0.2rem; }
+.contador ul { list-style: none; padding: 0; margin: 0.9rem 0 0; display: grid; gap: 0.3rem; }
+.cuadricula { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 0.6rem; }
+.casilla-seccion {
+  display: grid; justify-items: center; gap: 0.15rem; padding: 0.85rem 0.3rem; border-radius: var(--radio);
+  background: var(--superficie); border: 1px dashed var(--borde-fuerte); color: var(--texto-2); text-align: center;
+}
+.casilla-seccion .emoji { font-size: 1.6rem; line-height: 1.2; }
+.casilla-seccion b { color: var(--texto); font-size: 0.92rem; }
+.casilla-seccion small { font-size: 0.75rem; }
+
+/* Listas de ajustes */
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista li { display: flex; gap: 0.7rem; align-items: center; padding: 0.7rem 0; border-top: 1px solid var(--borde); }
+.lista li:first-child { border-top: 0; padding-top: 0; }
+.lista .crece { flex: 1; min-width: 0; }
+.lista .crece > * { display: block; }
+
+/* QR */
+.qr-caja { display: grid; justify-items: center; gap: 0.6rem; margin: 0.5rem 0 1rem; }
+.qr { width: min(260px, 72vw); height: auto; border-radius: 12px; border: 8px solid #FFFFFF; }
+
+/* Diálogos */
+.dialogo {
+  border: 0; border-radius: 18px; padding: 1.3rem; max-width: min(30rem, calc(100vw - 2rem));
+  background: var(--superficie); color: var(--texto); box-shadow: 0 20px 60px rgb(0 0 0 / 25%);
+}
+.dialogo::backdrop { background: rgb(23 17 26 / 45%); }
+.dialogo-cuerpo { margin-bottom: 1rem; }
+.dialogo-acciones { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.4rem; }
+
+/* Tostadas */
+.tostadas { position: fixed; left: 0; right: 0; bottom: calc(1rem + env(safe-area-inset-bottom, 0)); display: grid; justify-items: center; gap: 0.5rem; pointer-events: none; z-index: 50; }
+.tostada { pointer-events: auto; max-width: min(28rem, calc(100vw - 2rem)); padding: 0.7rem 1.1rem; border-radius: 999px; background: var(--texto); color: var(--fondo); font-weight: 700; box-shadow: 0 8px 24px rgb(0 0 0 / 20%); }
+.tostada-error { background: var(--peligro); color: #FFFFFF; border-radius: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* Utilidades (sin estilos en línea: la política de seguridad no los permite) */
+.arriba { margin-top: 1rem; }
+.arriba-mas { margin-top: 1.5rem; }
+.izquierda { text-align: left; }
+.grupo { border: 0; padding: 0; margin: 0; min-width: 0; }
