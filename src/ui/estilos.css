@@ -437,3 +437,107 @@ a.tarjeta.tarjeta-enlace { margin-bottom: 1rem; }
 .dialogo-dibujo .lienzo { max-height: 55dvh; width: auto; margin: 0 auto 0.6rem; }
 .tostada { display: flex; align-items: center; gap: 0.8rem; }
 .tostada-accion { all: unset; cursor: pointer; font-weight: 900; color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+
+/* ------------------------------------------------------------------ */
+/* Fase d: calendario y «Más»                                          */
+/* ------------------------------------------------------------------ */
+
+.casilla-seccion.activa { border-style: solid; color: var(--texto); text-decoration: none; background: var(--superficie); box-shadow: var(--sombra); }
+.boton-pequeno { min-height: 36px; padding: 0.3rem 0.85rem; font-size: 0.9rem; }
+
+.segmentado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.25rem; padding: 0.25rem; border-radius: 999px; background: var(--superficie-2); margin-bottom: 0.7rem; }
+.segmentado button { all: unset; text-align: center; padding: 0.45rem 0.5rem; border-radius: 999px; font-weight: 800; cursor: pointer; color: var(--texto-2); }
+.segmentado button[aria-selected="true"] { background: var(--superficie); color: var(--rosa-texto); box-shadow: var(--sombra); }
+.segmentado button:focus-visible { outline: 3px solid var(--foco); }
+
+.navegar-fecha { display: flex; align-items: center; gap: 0.3rem; margin: 0.2rem 0 0.6rem; }
+.navegar-fecha h2 { flex: 1; margin: 0; text-align: center; font-size: 1.05rem; }
+.navegar-fecha h2::first-letter { text-transform: uppercase; }
+.navegar-fecha .boton-icono { font-size: 1.6rem; }
+
+/* Mes */
+.mes { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); padding: 0.4rem; }
+.fila-semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.15rem; }
+.cabecera-semana span { text-align: center; font-size: 0.75rem; font-weight: 800; color: var(--texto-2); padding: 0.2rem 0; }
+.dia {
+  all: unset; box-sizing: border-box; display: grid; justify-items: center; align-content: start; gap: 0.15rem;
+  min-height: 3.1rem; padding: 0.3rem 0.1rem; border-radius: 10px; cursor: pointer;
+}
+.dia:hover { background: var(--superficie-2); }
+.dia:focus-visible { outline: 3px solid var(--foco); }
+.dia .num { font-weight: 700; font-size: 0.95rem; width: 1.8rem; height: 1.8rem; display: grid; place-items: center; border-radius: 50%; }
+.dia.fuera .num { color: var(--texto-2); opacity: 0.55; }
+.dia.hoy .num { color: var(--rosa-texto); border: 2px solid var(--rosa); }
+.dia.sel { background: var(--rosa-suave); }
+.dia.sel .num { background: var(--rosa-boton); color: var(--sobre-rosa); border-color: transparent; }
+.puntos { display: flex; gap: 2px; align-items: center; min-height: 6px; }
+.puntos i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+.puntos i.tarea { border-radius: 1px; background: var(--texto-2); width: 5px; height: 5px; }
+.puntos b { font-size: 0.6rem; line-height: 1; color: var(--texto-2); }
+
+/* Lista de eventos */
+.dia-detalle { margin-top: 1rem; }
+.dia-detalle h2::first-letter, .dia-agenda h3::first-letter { text-transform: uppercase; }
+.eventos { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.evento {
+  all: unset; box-sizing: border-box; width: 100%; display: grid; gap: 0.15rem; padding: 0.6rem 0.8rem 0.6rem 0.9rem; cursor: pointer;
+  background: var(--superficie); border: 1px solid var(--borde); border-left: 5px solid var(--morado); border-radius: 0 var(--radio-s) var(--radio-s) 0;
+}
+.evento:focus-visible { outline: 3px solid var(--foco); }
+.evento.borde-turquesa { border-left-color: var(--turquesa); }
+.evento.borde-rosa { border-left-color: var(--rosa); }
+.evento.borde-morado { border-left-color: var(--morado); }
+.evento .hora { font-size: 0.82rem; font-weight: 800; color: var(--texto-2); }
+.evento .titulo-evento { font-weight: 700; overflow-wrap: anywhere; }
+.agenda { display: grid; gap: 1rem; }
+.dia-agenda h3 { font-size: 0.98rem; margin: 0 0 0.4rem; color: var(--texto-2); }
+.dia-agenda .elementos { margin-top: 0.45rem; }
+
+/* Semana */
+.semana { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; }
+.semana-cabecera, .semana-todo-dia, .semana-rejilla { display: grid; grid-template-columns: 2.4rem repeat(7, minmax(0, 1fr)); }
+.dia-semana { all: unset; display: grid; justify-items: center; padding: 0.35rem 0; cursor: pointer; border-radius: 10px; }
+.dia-semana small { font-size: 0.7rem; color: var(--texto-2); font-weight: 800; }
+.dia-semana.hoy b { color: var(--rosa-texto); }
+.dia-semana.sel { background: var(--rosa-suave); }
+.dia-semana:focus-visible { outline: 3px solid var(--foco); }
+.semana-todo-dia { border-top: 1px solid var(--borde); border-bottom: 1px solid var(--borde); min-height: 1.6rem; }
+.semana-todo-dia > span { font-size: 0.65rem; align-self: center; text-align: center; }
+.semana-todo-dia > div { display: grid; gap: 2px; padding: 2px; align-content: start; min-width: 0; }
+.chip-evento, .bloque-evento {
+  all: unset; box-sizing: border-box; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 0.68rem; font-weight: 700; padding: 1px 3px; border-radius: 4px; cursor: pointer; color: #FFFFFF;
+}
+.chip-evento.c-rosa, .bloque-evento.c-rosa { background: var(--rosa-boton); color: var(--sobre-rosa); }
+.chip-evento.c-turquesa, .bloque-evento.c-turquesa { background: #0E8A87; }
+.chip-evento.c-morado, .bloque-evento.c-morado { background: var(--morado); }
+@media (prefers-color-scheme: dark) {
+  .chip-evento.c-turquesa, .bloque-evento.c-turquesa { background: #3FD0CC; color: #062625; }
+  .chip-evento.c-morado, .bloque-evento.c-morado { color: #1B163F; }
+}
+.chip-tarea { font-size: 0.65rem; color: var(--texto-2); text-align: center; }
+.semana-scroll { height: min(60dvh, 30rem); overflow-y: auto; position: relative; }
+.columna-horas span { display: block; height: 44px; font-size: 0.62rem; color: var(--texto-2); text-align: right; padding-right: 4px; transform: translateY(-0.4em); }
+.columna-dia { position: relative; border-left: 1px solid var(--borde); background-image: linear-gradient(var(--borde) 1px, transparent 1px); background-size: 100% 44px; }
+.bloque-evento { position: absolute; white-space: normal; line-height: 1.15; padding: 2px 3px; border: 1px solid var(--superficie); z-index: 2; }
+.franja { position: absolute; width: 50%; opacity: 0.18; z-index: 1; pointer-events: none; }
+.franja.izq { left: 0; }
+.franja.der { right: 0; }
+.ahora { position: absolute; left: 0; right: 0; height: 2px; background: var(--peligro); z-index: 3; }
+
+/* Formularios del calendario */
+.selector-categoria { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.selector-categoria label { position: relative; }
+.selector-categoria input, .selector-dias input { position: absolute; inset: 0; opacity: 0; margin: 0; }
+.selector-categoria span {
+  display: inline-block; padding: 0.35rem 0.7rem; border-radius: 999px; border: 1.5px solid var(--borde-fuerte); font-weight: 700; font-size: 0.9rem; cursor: pointer;
+}
+.selector-categoria input:checked + span { background: var(--rosa-suave); border-color: var(--rosa); color: var(--rosa-texto); }
+.selector-categoria input:focus-visible + span, .selector-dias input:focus-visible + span { outline: 3px solid var(--foco); }
+.selector-dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; }
+.selector-dias label { position: relative; }
+.selector-dias span { display: grid; place-items: center; height: 2.4rem; border-radius: 50%; border: 1.5px solid var(--borde-fuerte); font-weight: 800; cursor: pointer; }
+.selector-dias input:checked + span { background: var(--turquesa-suave); border-color: var(--turquesa); color: var(--turquesa-texto); }
+.fila > .campo { flex: 1; min-width: 0; }
+.detalle-evento p { margin: 0 0 0.5rem; }
+.notas-evento { white-space: pre-line; background: var(--superficie-2); padding: 0.6rem 0.8rem; border-radius: var(--radio-s); }

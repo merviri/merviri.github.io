@@ -6,14 +6,12 @@ import { agrupar, esMia, recordatoriosPara, RUTA_TAREAS, type Tarea } from "../.
 import { campoSecreto, conBoton, h, tostada } from "../dom";
 import { tarjetaActivarAvisos } from "./avisos";
 import { texto } from "./comunes";
+import { eventosDeHoyYProximos, filaEvento } from "./calendario";
 import { dibujosSinVer } from "./dibujos";
+import { diaLargo } from "./evento";
 import { listasOrdenadas } from "./listas";
 import { filaTarea, marcarHecha } from "./tareas";
 
-/** Lo que llegará en las próximas fases. */
-const PROXIMAMENTE: [string, string][] = [
-  ["📅", "Calendario"], ["✨", "Planes"], ["💶", "Gastos"], ["🍝", "Menú"], ["📷", "Álbum"],
-];
 
 const DIA_SEMANA = new Intl.DateTimeFormat("es-ES", { weekday: "long", timeZone: "Europe/Madrid" });
 
@@ -30,6 +28,7 @@ export function vistaInicio(app: Merviri): HTMLElement {
   const grupos = agrupar(tareas.filter((t) => esMia(t, app.persona)), hoyF);
   const paraHoy = [...grupos.atrasadas, ...grupos.hoy];
   const nuevos = dibujosSinVer(app);
+  const cal = eventosDeHoyYProximos(app);
   const listas = listasOrdenadas(app)
     .map((l) => ({ l, n: app.lista<Elemento>(rutaElementos(l.id)).filter((e) => !e.hecho).length }))
     .filter((x) => x.n > 0)
@@ -83,11 +82,23 @@ export function vistaInicio(app: Merviri): HTMLElement {
         h("a", { class: "boton", href: "#ajustes" }, "Añadir la fecha")),
 
     h("div", { class: "cabecera-vista arriba-mas" },
-      h("h2", {}, "Para hoy"),
-      h("a", { class: "enlace-suave", href: "#tareas" }, "Todas las tareas ›")),
+      h("h2", {}, "Hoy"),
+      h("a", { class: "enlace-suave", href: "#calendario" }, "Calendario ›")),
+    cal.hoy.length ? h("ul", { class: "eventos" }, cal.hoy.map((o) => filaEvento(app, o, hoyF))) : null,
     paraHoy.length
-      ? h("ul", { class: "elementos" }, paraHoy.slice(0, 6).map((t) => filaTarea(app, t, hoyF)))
-      : h("p", { class: "secundario" }, "Nada pendiente para hoy ✨"),
+      ? h("ul", { class: `elementos ${cal.hoy.length ? "arriba" : ""}` }, paraHoy.slice(0, 6).map((t) => filaTarea(app, t, hoyF)))
+      : null,
+    !cal.hoy.length && !paraHoy.length ? h("p", { class: "secundario" }, "Nada apuntado para hoy ✨") : null,
+    paraHoy.length > 6 ? h("p", {}, h("a", { class: "enlace-suave", href: "#tareas" }, `Ver las ${paraHoy.length} tareas ›`)) : null,
+
+    cal.proximos.length
+      ? [
+        h("h2", { class: "arriba-mas" }, "Próximos días"),
+        cal.proximos.map(({ dia, ocs }) => h("div", {},
+          h("h3", { class: "titulo-seccion" }, diaLargo(dia)),
+          h("ul", { class: "eventos" }, ocs.map((o) => filaEvento(app, o, dia))))),
+      ]
+      : null,
 
     listas.length
       ? [
@@ -108,10 +119,6 @@ export function vistaInicio(app: Merviri): HTMLElement {
         h("p", {}, "Vincula su móvil con un código QR: en Ajustes → Vincular otro dispositivo."),
         h("a", { class: "boton", href: "#vincular-otro" }, "Vincular su móvil")),
 
-    h("h2", { class: "arriba-mas" }, "Lo que viene"),
-    h("div", { class: "cuadricula" },
-      PROXIMAMENTE.map(([emoji, nombre]) =>
-        h("div", { class: "casilla-seccion" }, h("span", { class: "emoji", "aria-hidden": "true" }, emoji), h("b", {}, nombre), h("small", {}, "pronto")))),
   );
 }
 

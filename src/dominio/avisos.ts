@@ -1,4 +1,5 @@
 import type { Aviso } from "../avisos/push";
+import { delDia, esDe, ocurrencias, type Evento } from "./calendario";
 import { esFecha, sumarDias, ZONA, type Fecha } from "./fechas";
 import { contador, type IdPersona, type Pareja } from "./pareja";
 import { esMia, type Tarea } from "./tareas";
@@ -19,7 +20,7 @@ export const RUTA_PROGRAMADOS = "avisos/programados.json";
 export const ID_PLAN = "plan";
 export const WORKFLOW_AVISOS = "avisos.yml";
 
-export type TipoAviso = "dibujo" | "megusta" | "recordatorio" | "tarea" | "lista" | "nota" | "manana" | "aniversario";
+export type TipoAviso = "dibujo" | "megusta" | "recordatorio" | "tarea" | "lista" | "nota" | "evento" | "manana" | "aniversario";
 
 export const TIPOS_AVISO: { tipo: TipoAviso; texto: string; porDefecto: boolean }[] = [
   { tipo: "dibujo", texto: "🎨 Dibujos para mí", porDefecto: true },
@@ -28,7 +29,8 @@ export const TIPOS_AVISO: { tipo: TipoAviso; texto: string; porDefecto: boolean 
   { tipo: "tarea", texto: "✅ Tareas nuevas para mí", porDefecto: true },
   { tipo: "lista", texto: "📝 Cosas nuevas en las listas", porDefecto: true },
   { tipo: "nota", texto: "🗒️ Notas nuevas", porDefecto: false },
-  { tipo: "manana", texto: "☀️ Resumen de la mañana (9:00) con mis tareas", porDefecto: true },
+  { tipo: "evento", texto: "📅 Calendario: eventos nuevos y recordatorios", porDefecto: true },
+  { tipo: "manana", texto: "☀️ Resumen de la mañana (9:00): mis planes y tareas del día", porDefecto: true },
   { tipo: "aniversario", texto: "💜 Aniversarios y días redondos", porDefecto: true },
 ];
 
@@ -108,6 +110,7 @@ export interface EntradaPlan {
  */
 export function planificar(d: {
   tareas: Tarea[];
+  eventos?: Evento[];
   pareja: Pareja;
   suscripciones: Suscripcion[];
   ahora: Date;
@@ -123,20 +126,26 @@ export function planificar(d: {
     if (cuando.getTime() <= d.ahora.getTime()) continue;
     const iso = cuando.toISOString();
 
-    // Resumen de la mañana, por persona.
+    // Resumen de la mañana, por persona: sus planes del día y sus tareas.
     for (const s of d.suscripciones) {
       if (!quiere(s, "manana")) continue;
       const pendientes = d.tareas
         .filter((t) => !t.hecha && t.fecha && esFecha(t.fecha) && t.fecha <= dia && esMia(t, s.persona))
         .sort((a, b) => (a.fecha ?? "").localeCompare(b.fecha ?? "") || a.titulo.localeCompare(b.titulo, "es"));
-      if (!pendientes.length) continue;
+      const planes = delDia((d.eventos ?? []).filter((e) => esDe(e, s.persona)), dia)
+        .map((o) => (o.evento.todoElDia || o.dia < dia ? o.evento.titulo : `${o.evento.titulo} (${o.evento.horaInicio})`));
+      if (!pendientes.length && !planes.length) continue;
       const atrasadas = pendientes.filter((t) => t.fecha! < dia).length;
+      const partes = [
+        planes.length ? `📅 ${enumerar(planes)}` : "",
+        pendientes.length ? `✅ ${enumerar(pendientes.map((t) => t.titulo))}${atrasadas ? ` (${atrasadas} atrasada${atrasadas === 1 ? "" : "s"})` : ""}` : "",
+      ].filter(Boolean);
       salida.push({
         cuando: iso, dispositivo: s.id,
         aviso: {
           t: `☀️ Buenos días, ${d.pareja.personas[s.persona].nombre}`,
-          b: `Hoy: ${enumerar(pendientes.map((t) => t.titulo))}${atrasadas ? ` (${atrasadas} atrasada${atrasadas === 1 ? "" : "s"})` : ""}`,
-          r: "tareas", e: "manana",
+          b: `Hoy: ${partes.join(" · ")}`,
+          r: planes.length ? "calendario" : "tareas", e: "manana",
         },
       });
     }
@@ -157,7 +166,39 @@ export function planificar(d: {
       }
     }
   }
-  return salida.sort((a, b) => a.cuando.localeCompare(b.cuando) || a.dispositivo.localeCompare(b.dispositivo));
+  salida.push(...recordatoriosEventos(d.eventos ?? [], d.suscripciones, d.ahora, d.hoy, d.dias ?? 7));
+  return salida.sort((a, b) => a.cuando.localeCompare(b.cuando) || a.dispositivo.localeCompare(b.dispositivo) || a.aviso.e.localeCompare(b.aviso.e));
+}
+
+/** Recordatorios de los eventos que lo piden (la víspera, ese día o un rato antes). */
+function recordatoriosEventos(eventos: Evento[], subs: Suscripcion[], ahora: Date, hoyF: Fecha, dias: number): EntradaPlan[] {
+  const salida: EntradaPlan[] = [];
+  for (const e of eventos) {
+    if (!e.aviso || e.aviso === "ninguno") continue;
+    for (const o of ocurrencias(e, hoyF, sumarDias(hoyF, dias))) {
+      let cuando: Date;
+      let t: string;
+      if (e.aviso === "vispera") {
+        cuando = instanteMadrid(sumarDias(o.dia, -1), "20:00");
+        t = `📅 Mañana: ${e.titulo}`;
+      } else if (e.aviso === "manana" || e.todoElDia || !e.horaInicio) {
+        cuando = instanteMadrid(o.dia, "09:00");
+        t = `📅 Hoy: ${e.titulo}`;
+      } else {
+        cuando = new Date(instanteMadrid(o.dia, e.horaInicio).getTime() - 2 * 3600 * 1000);
+        t = `📅 ${e.titulo} a las ${e.horaInicio}`;
+      }
+      if (cuando.getTime() <= ahora.getTime()) continue;
+      const b = [e.todoElDia || !e.horaInicio ? "" : `A las ${e.horaInicio}`, e.lugar ?? ""].filter(Boolean).join(" · ");
+      for (const s of subs) {
+        if (!esDe(e, s.persona) || !quiere(s, "evento")) continue;
+        // El resumen de las 9:00 ya lo incluye: no se repite.
+        if (e.aviso === "manana" && quiere(s, "manana")) continue;
+        salida.push({ cuando: cuando.toISOString(), dispositivo: s.id, aviso: { t, b, r: "calendario", e: `evento-${e.id}-${o.dia}` } });
+      }
+    }
+  }
+  return salida;
 }
 
 /** Formato de `avisos/programados.json` (lo lee el flujo de GitHub Actions). */

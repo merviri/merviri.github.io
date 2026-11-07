@@ -103,9 +103,9 @@ describe("plan de avisos con hora", () => {
       ahora: new Date("2026-11-07T10:00:00Z"), hoy: "2026-11-07", dias: 3,
     });
     expect(plan.map((p) => [p.cuando, p.dispositivo, p.aviso.b])).toEqual([
-      ["2026-11-08T08:00:00.000Z", "movil-e", "Hoy: Basura"],
-      ["2026-11-09T08:00:00.000Z", "movil-e", "Hoy: Basura (1 atrasada)"],
-      ["2026-11-09T08:00:00.000Z", "movil-m", "Hoy: Fontanero"],
+      ["2026-11-08T08:00:00.000Z", "movil-e", "Hoy: ✅ Basura"],
+      ["2026-11-09T08:00:00.000Z", "movil-e", "Hoy: ✅ Basura (1 atrasada)"],
+      ["2026-11-09T08:00:00.000Z", "movil-m", "Hoy: ✅ Fontanero"],
     ]);
   });
 

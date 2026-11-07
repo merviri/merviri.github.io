@@ -47,6 +47,7 @@ function appFalsa(remoto: RemotoMemoria, persona: "p1" | "p2", datos: Record<str
     sincronizar: async () => {},
     pareja: () => PAREJA_INICIAL,
     lista: (ruta: string) => Object.values(datos[ruta] ?? {}),
+    eventos: () => [],
     uno: (ruta: string, id: string) => datos[ruta]?.[id],
     guardar: async (ruta: string, d: { id: string }) => { (datos[ruta] ??= {})[d.id] = d; return d; },
   } as unknown as Merviri;

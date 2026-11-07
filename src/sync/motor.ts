@@ -174,6 +174,13 @@ export class Motor {
     return this.indice.rama;
   }
 
+  /** Ficheros de datos que empiezan por `prefijo` (los que hay y los que se van a crear). */
+  rutasCon(prefijo: string): string[] {
+    const s = new Set([...this.cache.keys()].filter((r) => r.startsWith(prefijo)));
+    for (const op of this.cola) if (op.ruta.startsWith(prefijo)) s.add(op.ruta);
+    return [...s].sort();
+  }
+
   /** sha actual de un fichero fuera de datos/ (para saber si cambió). */
   shaRaiz(ruta: string): string | undefined {
     return this.indice.raiz[ruta];

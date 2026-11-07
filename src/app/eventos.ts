@@ -1,4 +1,6 @@
 import { enumerar } from "../dominio/avisos";
+import { esDe, type Evento } from "../dominio/calendario";
+import { fechaCorta } from "../dominio/fechas";
 import type { Destino } from "../dominio/dibujos";
 import type { Lista } from "../dominio/listas";
 import { resumen, type Nota } from "../dominio/notas";
@@ -71,5 +73,20 @@ export function avisarNota(app: Merviri, n: Nota) {
   app.avisador?.encolar({
     tipo: "nota", para: otraPersona(app.persona), clave: n.id,
     aviso: () => ({ t: `🗒️ Nota nueva de ${quien}`, b: n.titulo.trim() || resumen(n.texto, 100), r: `nota/${n.id}`, e: `nota-${n.id}` }),
+  });
+}
+
+/** Algo nuevo en el calendario que es de la otra (o de las dos). Los «ocupada» no se avisan. */
+export function avisarEvento(app: Merviri, e: Evento, antes: Evento | null) {
+  const otra = otraPersona(app.persona);
+  if (!esDe(e, otra) || (antes && esDe(antes, otra))) return;
+  const quien = yo(app);
+  const cuando = `${fechaCorta(e.inicio)}${e.todoElDia || !e.horaInicio ? "" : `, ${e.horaInicio}`}`;
+  app.avisador?.encolar({
+    tipo: "evento", para: otra, clave: "eventos", texto: `${e.titulo} (${cuando})`,
+    aviso: (textos) => ({
+      t: textos.length > 1 ? `📅 ${quien} ha apuntado ${textos.length} cosas` : `📅 ${quien} ha apuntado en el calendario`,
+      b: enumerar(textos), r: `calendario/${e.inicio}`, e: "eventos-nuevos",
+    }),
   });
 }

@@ -14,6 +14,7 @@ import { crearVinculo } from "../cifrado/vinculo";
 import { desuscribirse, permisoAvisos, suscribirse, suscripcionActual } from "../avisos/suscripcion";
 import { estadoToken, huellaToken, ID_ACCESO, RUTA_ACCESO, type Acceso } from "../dominio/acceso";
 import { PREFERENCIAS_INICIALES, RUTA_SUSCRIPCIONES, type Preferencias, type Suscripcion } from "../dominio/avisos";
+import { PREFIJO_CALENDARIO, rutaDeEvento, type Evento } from "../dominio/calendario";
 import { RUTA_TAREAS } from "../dominio/tareas";
 import { Avisador } from "./avisador";
 import { REFRESCO_DISPOSITIVO_MS, RUTA_DISPOSITIVOS, type Dispositivo } from "../dominio/dispositivos";
@@ -132,7 +133,8 @@ export class Merviri {
   private async alCambiarDatos(rutas: Set<string>) {
     if (rutas.has(RUTA_ACCESO)) await this.revisarAcceso().catch(() => undefined);
     if (rutas.has(`__raiz__:${RUTA_LLAVERO}`)) await this.refrescarLlavero().catch(() => undefined);
-    if (rutas.has(RUTA_TAREAS) || rutas.has(RUTA_PAREJA) || rutas.has(RUTA_SUSCRIPCIONES)) this.avisador?.programar();
+    if (rutas.has(RUTA_TAREAS) || rutas.has(RUTA_PAREJA) || rutas.has(RUTA_SUSCRIPCIONES) ||
+      [...rutas].some((r) => r.startsWith(PREFIJO_CALENDARIO))) this.avisador?.programar();
     this.avisar([...rutas].join(","));
   }
 
@@ -335,6 +337,23 @@ export class Merviri {
   borrar(ruta: string, id: string): Promise<void> {
     if (!this.motor) throw new Error("Merviri no está lista.");
     return this.motor.borrar(ruta, id, this.persona);
+  }
+
+  /** Todos los eventos del calendario (de todos los ficheros). */
+  eventos(): Registro<Evento>[] {
+    if (!this.motor) return [];
+    return this.motor.rutasCon(PREFIJO_CALENDARIO).flatMap((r) => this.lista<Evento>(r));
+  }
+
+  /** Guarda un evento en su fichero; si cambió de fichero (otro año, o pasa a repetirse), lo quita del anterior. */
+  async guardarEvento(e: Evento, previo: Evento | null): Promise<void> {
+    const ruta = rutaDeEvento(e);
+    if (previo && rutaDeEvento(previo) !== ruta) await this.borrar(rutaDeEvento(previo), previo.id);
+    await this.guardar<Evento>(ruta, e);
+  }
+
+  async borrarEvento(e: Evento): Promise<void> {
+    await this.borrar(rutaDeEvento(e), e.id);
   }
 
   pareja(): Pareja {

@@ -145,7 +145,10 @@ export class Avisador {
     if (!this.activo || !remoto) return;
     const subs = this.app.lista<Suscripcion>(RUTA_SUSCRIPCIONES);
     const ahora = new Date();
-    const plan = planificar({ tareas: this.app.lista<Tarea>(RUTA_TAREAS), pareja: this.app.pareja(), suscripciones: subs, ahora, hoy: hoy(ahora) });
+    const plan = planificar({
+      tareas: this.app.lista<Tarea>(RUTA_TAREAS), eventos: this.app.eventos(), pareja: this.app.pareja(),
+      suscripciones: subs, ahora, hoy: hoy(ahora),
+    });
     const huella = await sha256Hex(JSON.stringify(plan.map((p) => [p.cuando, p.aviso, subs.find((s) => s.id === p.dispositivo)?.endpoint])));
     if (this.app.uno<{ id: string; huella: string }>(RUTA_PLAN, ID_PLAN)?.huella === huella) return;
 
