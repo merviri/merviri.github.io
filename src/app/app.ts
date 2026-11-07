@@ -15,6 +15,7 @@ import { desuscribirse, permisoAvisos, suscribirse, suscripcionActual } from "..
 import { estadoToken, huellaToken, ID_ACCESO, RUTA_ACCESO, type Acceso } from "../dominio/acceso";
 import { PREFERENCIAS_INICIALES, RUTA_SUSCRIPCIONES, type Preferencias, type Suscripcion } from "../dominio/avisos";
 import { PREFIJO_CALENDARIO, rutaDeEvento, type Evento } from "../dominio/calendario";
+import { gastosFijosDelMes, RUTA_FIJOS, rutaGastos, type Gasto, type GastoFijo } from "../dominio/gastos";
 import { RUTA_TAREAS } from "../dominio/tareas";
 import { Avisador } from "./avisador";
 import { REFRESCO_DISPOSITIVO_MS, RUTA_DISPOSITIVOS, type Dispositivo } from "../dominio/dispositivos";
@@ -159,6 +160,7 @@ export class Merviri {
     await this.revisarAcceso().catch(() => undefined);
     await this.registrarDispositivo().catch(() => undefined);
     await this.revisarSuscripcion().catch(() => undefined);
+    await this.aplicarGastosFijos().catch(() => undefined);
     this.avisador?.programar(15_000);
   }
 
@@ -337,6 +339,20 @@ export class Merviri {
   borrar(ruta: string, id: string): Promise<void> {
     if (!this.motor) throw new Error("Merviri no está lista.");
     return this.motor.borrar(ruta, id, this.persona);
+  }
+
+  /**
+   * Apunta los gastos fijos de este mes que ya han llegado. El id es fijo por
+   * mes, así que si los dos móviles lo hacen a la vez no se duplican; y si se
+   * borró a mano, no se vuelve a crear.
+   */
+  async aplicarGastosFijos(): Promise<void> {
+    if (!this.motor) return;
+    const fijos = this.lista<GastoFijo>(RUTA_FIJOS);
+    for (const g of gastosFijosDelMes(fijos, hoy(this.ahora()))) {
+      const f = fijos.find((x) => x.id === g.fijo)!;
+      if (!this.motor.existe(rutaGastos(f.bote), g.id)) await this.guardar<Gasto>(rutaGastos(f.bote), g);
+    }
   }
 
   /** Todos los eventos del calendario (de todos los ficheros). */

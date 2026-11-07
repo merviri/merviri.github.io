@@ -81,6 +81,9 @@ datos/horarios.json         horario habitual de cada una
 datos/suscripciones.json    avisos: dirección y claves de cada móvil
 datos/planes.json           planes y deseos
 datos/ganas.json            ganas de cada una en cada plan
+datos/gastos/botes.json     botes de gastos (Casa, viajes…) y sus amigos
+datos/gastos/<bote>.json    gastos y pagos de cada bote (importes en céntimos)
+datos/gastos/fijos.json     gastos fijos que se apuntan solos cada mes
 ```
 
 Todos los ficheros de `datos/` van cifrados.
@@ -113,7 +116,7 @@ Al subir a `main`, `.github/workflows/publicar.yml` pasa las pruebas, compila y 
 - [x] **c.** Avisos (Web Push): dibujos, ❤️, «recuérdaselo», tareas y listas al momento; resumen de la mañana y aniversarios con hora.
 - [x] **d.** Calendario común (mes, semana con horas y agenda), «ocupada» sin detalles, cumpleaños, horario habitual y recordatorios.
 - [x] **e.** Planes y deseos (plazo, dificultad, duración, coste, reserva, clima, temporada, ganas de cada una), Descubrir (catálogo, agenda de la Junta, fechas especiales, sitios cercanos) y «¿Qué hacemos?» (huecos libres + tiempo de Open-Meteo).
-- [ ] **f.** Gastos tipo Tricount.
+- [x] **f.** Gastos tipo Tricount: botes (Casa y viajes con amigos), repartos a partes iguales, por partes o por importes, saldos y cómo saldar, varias monedas (cambio del BCE), gastos fijos mensuales, resumen y CSV.
 - [ ] **g.** Recetas, menú semanal y lista de la compra.
 - [ ] **h.** Álbum compartido con fotos originales.
 - [ ] **i.** Cosas de pareja: pregunta del día, votaciones, cápsulas del tiempo…

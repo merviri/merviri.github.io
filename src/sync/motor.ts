@@ -161,6 +161,11 @@ export class Motor {
     return Object.values(this.visibles(ruta)).filter((r) => !r.borrado) as Registro<T>[];
   }
 
+  /** ¿Hay (o hubo, si se borró) un registro con ese id? */
+  existe(ruta: string, id: string): boolean {
+    return this.visibles(ruta)[id] !== undefined;
+  }
+
   uno<T extends object>(ruta: string, id: string): Registro<T> | undefined {
     const r = this.visibles(ruta)[id];
     return r && !r.borrado ? (r as Registro<T>) : undefined;

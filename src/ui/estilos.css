@@ -567,3 +567,21 @@ a.tarjeta.tarjeta-enlace { margin-bottom: 1rem; }
 .sugerencia .cuando::first-letter { text-transform: uppercase; }
 .sugerencia .tiempo { margin: 0.2rem 0 0; font-weight: 700; }
 .aviso-reserva { background: var(--aviso-suave); color: var(--aviso-texto); padding: 0.5rem 0.7rem; border-radius: var(--radio-s); font-weight: 700; }
+
+/* ------------------------------------------------------------------ */
+/* Fase f: gastos                                                      */
+/* ------------------------------------------------------------------ */
+.positivo { color: var(--exito); font-weight: 800; }
+.negativo { color: var(--peligro); font-weight: 800; }
+.lista li b { margin-left: 0.4rem; }
+.elemento.gasto { padding: 0.5rem 0.2rem; }
+.fila-gasto { display: flex; align-items: center; gap: 0.6rem; }
+.fila-gasto .crece { display: grid; min-width: 0; }
+.fila-gasto .importe { white-space: nowrap; }
+.fila-reparto { align-items: center; }
+.fila-reparto input.corto { width: 6rem; min-height: 40px; padding: 0.3rem 0.5rem; border: 1.5px solid var(--borde-fuerte); border-radius: var(--radio-s); font: inherit; background: var(--superficie); color: var(--texto); }
+.total-mes { font-size: 2rem; font-weight: 900; text-align: center; margin: 0.2rem 0 0.8rem; color: var(--morado-texto); }
+.barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.barras li { display: grid; grid-template-columns: 8.5rem 1fr auto; align-items: center; gap: 0.5rem; font-size: 0.92rem; }
+.pista { height: 0.7rem; background: var(--superficie-2); border-radius: 999px; overflow: hidden; }
+.barra { display: block; height: 100%; background: var(--morado); border-radius: 999px; }

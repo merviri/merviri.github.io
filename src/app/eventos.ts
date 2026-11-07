@@ -5,6 +5,7 @@ import type { Destino } from "../dominio/dibujos";
 import type { Lista } from "../dominio/listas";
 import { resumen, type Nota } from "../dominio/notas";
 import type { Plan } from "../dominio/planes";
+import { dinero, type Bote, type Gasto } from "../dominio/gastos";
 import { otraPersona, type IdPersona } from "../dominio/pareja";
 import { aQuien, type Tarea } from "../dominio/tareas";
 import type { Merviri } from "./app";
@@ -99,6 +100,18 @@ export function avisarPlan(app: Merviri, p: Plan) {
     aviso: (titulos) => ({
       t: titulos.length > 1 ? `✨ ${quien} ha apuntado ${titulos.length} ideas` : `✨ Idea de ${quien}`,
       b: `${enumerar(titulos)} · ¿Cuántas ganas tienes?`, r: titulos.length > 1 ? "planes" : `plan/${p.id}`, e: "planes-nuevos",
+    }),
+  });
+}
+
+export function avisarGasto(app: Merviri, b: Bote, g: Gasto) {
+  if (g.tipo !== "gasto") return;
+  const quien = yo(app);
+  app.avisador?.encolar({
+    tipo: "gasto", para: otraPersona(app.persona), clave: b.id, texto: `${g.concepto} (${dinero(g.importe, b.moneda)})`,
+    aviso: (textos) => ({
+      t: `💶 ${b.emoji} ${b.nombre}`,
+      b: `${quien} ha apuntado ${textos.length === 1 ? textos[0] : enumerar(textos)}`, r: `bote/${b.id}`, e: `gastos-${b.id}`,
     }),
   });
 }
