@@ -1,7 +1,8 @@
 import type { Aviso } from "../avisos/push";
 import { delDia, esDe, ocurrencias, type Evento } from "./calendario";
-import { esFecha, sumarDias, ZONA, type Fecha } from "./fechas";
-import { contador, type IdPersona, type Pareja } from "./pareja";
+import { esFecha, mismoDiaEnAnio, sumarDias, ZONA, type Fecha } from "./fechas";
+import { esParaMi, type Capsula, type Ficha } from "./juntas";
+import { contador, otraPersona, type IdPersona, type Pareja } from "./pareja";
 import { esMia, type Tarea } from "./tareas";
 
 /**
@@ -20,7 +21,7 @@ export const RUTA_PROGRAMADOS = "avisos/programados.json";
 export const ID_PLAN = "plan";
 export const WORKFLOW_AVISOS = "avisos.yml";
 
-export type TipoAviso = "dibujo" | "megusta" | "recordatorio" | "tarea" | "lista" | "nota" | "evento" | "plan" | "gasto" | "foto" | "manana" | "aniversario";
+export type TipoAviso = "dibujo" | "megusta" | "recordatorio" | "tarea" | "lista" | "nota" | "evento" | "plan" | "gasto" | "foto" | "pareja" | "manana" | "aniversario";
 
 export const TIPOS_AVISO: { tipo: TipoAviso; texto: string; porDefecto: boolean }[] = [
   { tipo: "dibujo", texto: "🎨 Dibujos para mí", porDefecto: true },
@@ -33,8 +34,9 @@ export const TIPOS_AVISO: { tipo: TipoAviso; texto: string; porDefecto: boolean 
   { tipo: "plan", texto: "✨ Ideas nuevas en Planes", porDefecto: true },
   { tipo: "gasto", texto: "💶 Gastos nuevos", porDefecto: true },
   { tipo: "foto", texto: "📷 Fotos nuevas en el álbum", porDefecto: true },
+  { tipo: "pareja", texto: "💬 Pregunta del día, votaciones, cápsulas y deseos", porDefecto: true },
   { tipo: "manana", texto: "☀️ Resumen de la mañana (9:00): mis planes y tareas del día", porDefecto: true },
-  { tipo: "aniversario", texto: "💜 Aniversarios y días redondos", porDefecto: true },
+  { tipo: "aniversario", texto: "💜 Aniversarios, cumpleaños y días redondos", porDefecto: true },
 ];
 
 export interface Preferencias {
@@ -114,6 +116,8 @@ export interface EntradaPlan {
 export function planificar(d: {
   tareas: Tarea[];
   eventos?: Evento[];
+  capsulas?: Capsula[];
+  fichas?: Ficha[];
   pareja: Pareja;
   suscripciones: Suscripcion[];
   ahora: Date;
@@ -165,6 +169,36 @@ export function planificar(d: {
       if (texto) {
         for (const s of d.suscripciones) {
           if (quiere(s, "aniversario")) salida.push({ cuando: iso, dispositivo: s.id, aviso: { t: "💜 Merviri", b: texto, r: "inicio", e: `aniversario-${dia}` } });
+        }
+      }
+    }
+
+    // Cápsulas del tiempo que se abren ese día.
+    for (const c of d.capsulas ?? []) {
+      if (c.abrir !== dia) continue;
+      for (const s of d.suscripciones) {
+        if (!esParaMi(c, s.persona) || !quiere(s, "pareja")) continue;
+        salida.push({ cuando: iso, dispositivo: s.id, aviso: { t: "💌 Hoy se abre una cápsula del tiempo", b: `«${c.titulo}»`, r: "capsulas", e: `capsula-${c.id}` } });
+      }
+    }
+
+    // Cumpleaños (y, una semana antes, aviso a la otra para el regalo).
+    for (const f of d.fichas ?? []) {
+      if (!f.cumple || !esFecha(f.cumple) || (f.id !== "p1" && f.id !== "p2")) continue;
+      const nombre = d.pareja.personas[f.id].nombre;
+      const cumple = mismoDiaEnAnio(f.cumple, +dia.slice(0, 4));
+      const semana = mismoDiaEnAnio(f.cumple, +sumarDias(dia, 7).slice(0, 4));
+      for (const s of d.suscripciones) {
+        if (!quiere(s, "aniversario")) continue;
+        if (cumple === dia) {
+          salida.push({
+            cuando: iso, dispositivo: s.id,
+            aviso: s.persona === f.id
+              ? { t: `🎂 ¡Feliz cumpleaños, ${nombre}!`, b: "Que tengas un día precioso ✨", r: "inicio", e: `cumple-${f.id}-${dia}` }
+              : { t: `🎂 Hoy es el cumple de ${nombre}`, b: "¡A celebrarlo! 💜", r: "inicio", e: `cumple-${f.id}-${dia}` },
+          });
+        } else if (semana === sumarDias(dia, 7) && s.persona === otraPersona(f.id)) {
+          salida.push({ cuando: iso, dispositivo: s.id, aviso: { t: `🎁 En una semana es el cumple de ${nombre}`, b: "Mira su lista de deseos en Merviri", r: `deseos/${f.id}`, e: `cumple-pronto-${f.id}` } });
         }
       }
     }

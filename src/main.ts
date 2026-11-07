@@ -17,6 +17,8 @@ import { vistaBote, vistaGastos } from "./ui/vistas/gastos";
 import { vistaAlbum, vistaFoto } from "./ui/vistas/album";
 import { vistaCompartido } from "./ui/vistas/compartido";
 import { vistaMas } from "./ui/vistas/mas";
+import { pendientesNosotras, vistaCapsulas, vistaDecidir, vistaDeseos, vistaFicha, vistaNosotras, vistaNuestroAnio, vistaPreguntas, vistaVotacion } from "./ui/vistas/juntas";
+import { esIdPersona, type IdPersona } from "./dominio/pareja";
 import { vistaMenu, vistaReceta, vistaRecetas } from "./ui/vistas/menu";
 import { vistaPlan, vistaPlanes } from "./ui/vistas/planes";
 import { vistaQueHacemos } from "./ui/vistas/quehacemos";
@@ -69,6 +71,14 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
   album: (a, p) => vistaAlbum(a, p),
   foto: (a, p) => vistaFoto(a, p),
   compartido: (a) => vistaCompartido(a),
+  nosotras: (a) => vistaNosotras(a),
+  pregunta: (a) => vistaPreguntas(a),
+  decidir: (a) => vistaDecidir(a),
+  votacion: (a, p) => vistaVotacion(a, p),
+  capsulas: (a) => vistaCapsulas(a),
+  ficha: (a, p) => vistaFicha(a, p as IdPersona),
+  deseos: (a, p) => vistaDeseos(a, p as IdPersona),
+  "nuestro-ano": (a, p) => vistaNuestroAnio(a, p),
   recetas: (a) => vistaRecetas(a),
   receta: (a, p) => vistaReceta(a, p),
   bote: (a, p) => vistaBote(a, p),
@@ -89,15 +99,17 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
 };
 /** Pestaña de la barra inferior a la que pertenece cada ruta. */
 const PESTANA: Record<string, string> = {
-  lista: "listas", plan: "planes", gastos: "mas", bote: "mas", menu: "mas", recetas: "mas", receta: "mas", album: "mas", foto: "mas", descubrir: "planes", "que-hacemos": "planes", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
+  lista: "listas", plan: "planes", gastos: "mas", bote: "mas", menu: "mas", recetas: "mas", receta: "mas", album: "mas", foto: "mas", nosotras: "mas", pregunta: "mas", decidir: "mas", votacion: "mas", capsulas: "mas", ficha: "mas", deseos: "mas", "nuestro-ano": "mas", descubrir: "planes", "que-hacemos": "planes", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
 };
 
 function ruta(): { nombre: string; param: string } {
   const [nombre = "", ...resto] = location.hash.slice(1).split("/");
   const param = resto.join("/");
   if (!(nombre in VISTAS)) return { nombre: "inicio", param: "" };
-  if (["lista", "nota", "dibujo", "plan", "bote", "receta", "foto"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
+  if (["lista", "nota", "dibujo", "plan", "bote", "receta", "foto", "votacion"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
   if (nombre === "album" && param && !/^[A-Za-z0-9_-]{1,60}$/.test(param)) return { nombre, param: "" };
+  if ((nombre === "ficha" || nombre === "deseos") && !esIdPersona(param)) return { nombre: "nosotras", param: "" };
+  if (nombre === "nuestro-ano" && param && !/^\d{4}$/.test(param)) return { nombre, param: "" };
   if (nombre === "calendario" && param && !/^\d{4}-\d{2}-\d{2}$/.test(param)) return { nombre, param: "" };
   return { nombre, param };
 }
@@ -116,7 +128,7 @@ function pintarNavegacion() {
   const yo = app.persona;
   const tareasHoy = app.lista<Tarea>(RUTA_TAREAS)
     .filter((t) => !t.hecha && esMia(t, yo) && t.fecha !== null && t.fecha <= hoy()).length;
-  const dibujosNuevos = dibujosSinVer(app).length;
+  const dibujosNuevos = dibujosSinVer(app).length + pendientesNosotras(app);
   const pestanas: [string, string, string, number][] = [
     ["inicio", "🏠", "Inicio", 0],
     ["calendario", "📅", "Calendario", 0],

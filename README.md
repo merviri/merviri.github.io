@@ -88,6 +88,11 @@ datos/recetas.json          recetas (ingredientes y pasos)
 datos/menu/<año>.json       menú: un registro por día y comida
 datos/album/<año>.json      ficha de cada foto (repositorio, fecha, álbumes, favorita, papelera)
 datos/album/albumes.json    álbumes (también los de los planes)
+datos/preguntas/<año>.json  respuestas a la pregunta del día (una por persona y día)
+datos/votaciones.json       «decidir juntas»; datos/votos.json, un voto por persona
+datos/capsulas.json         cápsulas del tiempo (la app no las enseña hasta su fecha)
+datos/fichas.json           ficha «bueno saber» de cada una (cumpleaños, tallas, gustos)
+datos/deseos.json           deseos e ideas de regalo; datos/reservas.json, «me lo pido»
 ```
 
 Las fotos van en `merviri/fotos-1` … `fotos-5` como `fotos/AAAA/MM/<id>.mini|.vista|.orig`, cifradas (`MRV1` + id de clave + IV + AES-GCM). Vaciar la papelera rehace ese repositorio sin las fotos borradas y sin historial (commit sin padres), así el espacio se libera de verdad.
@@ -125,7 +130,7 @@ Al subir a `main`, `.github/workflows/publicar.yml` pasa las pruebas, compila y 
 - [x] **f.** Gastos tipo Tricount: botes (Casa y viajes con amigos), repartos a partes iguales, por partes o por importes, saldos y cómo saldar, varias monedas (cambio del BCE), gastos fijos mensuales, resumen y CSV.
 - [x] **g.** Recetas, menú semanal (comida y cena, quién cocina) y lista de la compra por secciones del súper.
 - [x] **h.** Álbum compartido: originales cifrados (y miniatura y vista), por meses, álbumes y álbumes de planes, favoritas, papelera que libera espacio de verdad, ZIP para el ordenador y «Compartir → Merviri» desde la galería de Android.
-- [ ] **i.** Cosas de pareja: pregunta del día, votaciones, cápsulas del tiempo…
+- [x] **i.** «Nosotras»: pregunta del día (la de la otra se ve al contestar tú, con racha), decidir juntas (voto secreto y desempate al azar), cápsulas del tiempo, fichas «bueno saber» con cumpleaños, deseos con «me lo pido» e ideas de regalo secretas, y «Nuestro año».
 
 ## Licencias de terceros
 

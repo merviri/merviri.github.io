@@ -1,3 +1,4 @@
+import { RUTA_CAPSULAS, RUTA_FICHAS } from "../dominio/juntas";
 import { ErrorDescifrado } from "../cifrado/errores";
 import {
   abrirConCodigo,
@@ -150,7 +151,7 @@ export class Merviri {
   private async alCambiarDatos(rutas: Set<string>) {
     if (rutas.has(RUTA_ACCESO)) await this.revisarAcceso().catch(() => undefined);
     if (rutas.has(`__raiz__:${RUTA_LLAVERO}`)) await this.refrescarLlavero().catch(() => undefined);
-    if (rutas.has(RUTA_TAREAS) || rutas.has(RUTA_PAREJA) || rutas.has(RUTA_SUSCRIPCIONES) ||
+    if (rutas.has(RUTA_TAREAS) || rutas.has(RUTA_PAREJA) || rutas.has(RUTA_SUSCRIPCIONES) || rutas.has(RUTA_CAPSULAS) || rutas.has(RUTA_FICHAS) ||
       [...rutas].some((r) => r.startsWith(PREFIJO_CALENDARIO))) this.avisador?.programar();
     this.avisar([...rutas].join(","));
   }

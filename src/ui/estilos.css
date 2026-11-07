@@ -620,3 +620,49 @@ a.tarjeta.tarjeta-enlace { margin-bottom: 1rem; }
 .flecha-foto.der { right: 0; border-radius: 12px 0 0 12px; }
 .botones.centrados { justify-content: center; }
 .visor .pastilla { margin: 0 0.2rem; text-decoration: none; }
+
+/* ------------------------------------------------------------------ */
+/* Fase i: Nosotras                                                    */
+/* ------------------------------------------------------------------ */
+.lista-enlaces { display: grid; gap: 0.6rem; }
+.lista-enlaces .tarjeta-enlace { margin: 0; }
+.pregunta-dia { margin-top: 1rem; }
+.pregunta-dia .cabecera-vista { margin: 0; }
+.etiqueta-pregunta { font-weight: 800; letter-spacing: 0.01em; }
+.texto-pregunta { font-size: 1.15rem; font-weight: 800; line-height: 1.3; margin: 0.4rem 0 0.6rem; }
+.pregunta-dia textarea { width: 100%; background: var(--superficie); }
+.respuesta { border-radius: var(--radio-s); padding: 0.55rem 0.8rem; margin: 0.5rem 0; background: var(--superficie); color: var(--texto); border-left: 4px solid var(--borde-fuerte); }
+.respuesta small { display: flex; align-items: center; gap: 0.35rem; font-weight: 800; color: var(--texto-2); }
+.respuesta p { margin: 0.2rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.respuesta-turquesa { border-left-color: var(--turquesa); }
+.respuesta-rosa { border-left-color: var(--rosa); }
+.respuesta-morado { border-left-color: var(--morado); }
+.historial-preguntas { display: grid; gap: 0.7rem; }
+.historial-preguntas .texto-pregunta { font-size: 1rem; }
+.bloque { display: block; }
+.opcion-voto { justify-content: center; font-size: 1.05rem; }
+.opcion-voto.elegida { border-color: var(--morado); background: var(--morado-suave); color: var(--morado-texto); }
+.resultado-voto { text-align: center; }
+.resultado-voto .emoji-grande { font-size: 2.4rem; }
+.resultado-voto .ganadora { font-size: 1.5rem; font-weight: 900; margin: 0.2rem 0 0.4rem; }
+.mensaje-capsula { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1.05rem; line-height: 1.5; }
+.campos-ficha { display: grid; gap: 0.5rem; }
+.fila-campo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 0.4rem; align-items: center; }
+.fila-campo input { min-width: 0; }
+.ficha-datos { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); margin: 1rem 0 0; background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; }
+.ficha-datos dt, .ficha-datos dd { margin: 0; padding: 0.6rem 0.8rem; border-top: 1px solid var(--borde); overflow-wrap: anywhere; }
+.ficha-datos dt { color: var(--texto-2); font-weight: 700; }
+.ficha-datos dd { font-weight: 800; }
+.ficha-datos dt:first-of-type, .ficha-datos dt:first-of-type + dd { border-top: 0; }
+.deseos li { flex-wrap: wrap; }
+.deseos .elemento { flex: 1 1 12rem; }
+.casilla { display: flex; align-items: center; gap: 0.4rem; font-weight: 700; }
+.datos-anio { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.6rem; }
+.dato-anio { display: grid; justify-items: center; text-align: center; gap: 0.1rem; padding: 0.9rem 0.5rem; background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); box-shadow: var(--sombra); }
+.dato-anio .emoji { font-size: 1.5rem; }
+.dato-anio b { font-size: 1.7rem; font-weight: 900; line-height: 1.1; color: var(--morado-texto); }
+.dato-anio small { color: var(--texto-2); font-weight: 700; }
+.lista-planes-anio { margin: 0; padding-left: 0.2rem; list-style: none; display: grid; gap: 0.3rem; }
+a.ficha { text-decoration: none; color: inherit; }
+.elementos .elemento.en-fila { display: flex; align-items: center; gap: 0.5rem; }
+.elementos .en-fila .crece { flex: 1; min-width: 0; }

@@ -13,6 +13,7 @@ import { saldoCasa } from "./gastos";
 import { platoDeHoy } from "./menu";
 import { haceUnAnio, tiraDeFotos } from "./album";
 import { listasOrdenadas } from "./listas";
+import { tarjetaCapsulas, tarjetaCumple, tarjetaPregunta } from "./juntas";
 import { filaTarea, marcarHecha } from "./tareas";
 
 
@@ -66,6 +67,9 @@ export function vistaInicio(app: Merviri): HTMLElement {
         h("span", { class: "flecha", "aria-hidden": "true" }, "›"))
       : null,
 
+    tarjetaCumple(app),
+    tarjetaCapsulas(app),
+
     tarjetaActivarAvisos(app),
 
     app.tocaPracticar() ? tarjetaPractica(app) : null,
@@ -86,6 +90,8 @@ export function vistaInicio(app: Merviri): HTMLElement {
         h("p", {}, h("b", {}, "¿Desde cuándo estáis juntas?")),
         h("p", {}, "Poned la fecha y Merviri contará los días y os avisará de los aniversarios."),
         h("a", { class: "boton", href: "#ajustes" }, "Añadir la fecha")),
+
+    tarjetaPregunta(app),
 
     h("div", { class: "cabecera-vista arriba-mas" },
       h("h2", {}, "Hoy"),

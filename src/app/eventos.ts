@@ -1,6 +1,7 @@
 import { enumerar } from "../dominio/avisos";
 import { esDe, type Evento } from "../dominio/calendario";
-import { fechaCorta } from "../dominio/fechas";
+import { fechaCorta, fechaLarga, type Fecha } from "../dominio/fechas";
+import type { Capsula, Deseo, Votacion } from "../dominio/juntas";
 import type { Destino } from "../dominio/dibujos";
 import type { Lista } from "../dominio/listas";
 import { resumen, type Nota } from "../dominio/notas";
@@ -128,5 +129,58 @@ export function avisarFotos(app: Merviri, n: number, album: Album | null) {
         b: album ? `${album.emoji} ${album.nombre}` : "Al álbum de Merviri", r: album ? `album/${album.id}` : "album", e: `fotos-${album?.id ?? "todas"}`,
       };
     },
+  });
+}
+
+/** Has contestado la pregunta del día. */
+export function avisarRespuesta(app: Merviri, fecha: Fecha, otraYaHaContestado: boolean) {
+  const quien = yo(app);
+  app.avisador?.encolar({
+    tipo: "pareja", para: otraPersona(app.persona), clave: `pregunta-${fecha}`,
+    aviso: () => ({
+      t: `💬 ${quien} ha contestado la pregunta del día`,
+      b: otraYaHaContestado ? "Ya podéis ver las dos respuestas ✨" : "Contesta tú para ver su respuesta",
+      r: "pregunta", e: `pregunta-${fecha}`,
+    }),
+  });
+}
+
+export function avisarVotacion(app: Merviri, v: Votacion) {
+  const quien = yo(app);
+  app.avisador?.encolar({
+    tipo: "pareja", para: otraPersona(app.persona), clave: `votacion-${v.id}`,
+    aviso: () => ({ t: `🗳️ ${quien} quiere decidir contigo`, b: `${v.pregunta} · Tu voto es secreto hasta que votéis las dos`, r: `votacion/${v.id}`, e: `votacion-${v.id}` }),
+  });
+}
+
+/** Has votado y la otra ya lo había hecho: ya hay resultado. */
+export function avisarResultado(app: Merviri, v: Votacion) {
+  const quien = yo(app);
+  app.avisador?.encolar({
+    tipo: "pareja", para: otraPersona(app.persona), clave: `votacion-${v.id}`,
+    aviso: () => ({ t: `🗳️ ${quien} ha votado: ¡ya está decidido!`, b: v.pregunta, r: `votacion/${v.id}`, e: `votacion-${v.id}` }),
+  });
+}
+
+export function avisarCapsula(app: Merviri, c: Capsula) {
+  const otra = otraPersona(app.persona);
+  if (c.para !== otra && c.para !== "ambas") return;
+  const quien = yo(app);
+  app.avisador?.encolar({
+    tipo: "pareja", para: otra, clave: `capsula-${c.id}`,
+    aviso: () => ({
+      t: c.para === "ambas" ? `💌 ${quien} ha guardado una cápsula del tiempo para las dos` : `💌 ${quien} te ha dejado una cápsula del tiempo`,
+      b: `Se podrá abrir el ${fechaLarga(c.abrir)}`, r: "capsulas", e: `capsula-nueva-${c.id}`,
+    }),
+  });
+}
+
+/** Un deseo propio nuevo (las ideas de regalo secretas no se avisan). */
+export function avisarDeseo(app: Merviri, d: Deseo) {
+  if (d.de !== app.persona) return;
+  const quien = yo(app);
+  app.avisador?.encolar({
+    tipo: "pareja", para: otraPersona(app.persona), clave: "deseos", texto: d.titulo,
+    aviso: (titulos) => ({ t: `🎁 ${quien} ha apuntado ${titulos.length === 1 ? "un deseo" : `${titulos.length} deseos`}`, b: enumerar(titulos), r: `deseos/${d.de}`, e: `deseos-${d.de}` }),
   });
 }

@@ -1,3 +1,4 @@
+import { RUTA_CAPSULAS, RUTA_FICHAS, type Capsula, type Ficha } from "../dominio/juntas";
 import { avisoEnBytes, cifrarAviso, type Aviso } from "../avisos/push";
 import { VAPID_PUBLICA } from "../avisos/vapid";
 import {
@@ -147,6 +148,7 @@ export class Avisador {
     const ahora = new Date();
     const plan = planificar({
       tareas: this.app.lista<Tarea>(RUTA_TAREAS), eventos: this.app.eventos(), pareja: this.app.pareja(),
+      capsulas: this.app.lista<Capsula>(RUTA_CAPSULAS), fichas: this.app.lista<Ficha>(RUTA_FICHAS),
       suscripciones: subs, ahora, hoy: hoy(ahora),
     });
     const huella = await sha256Hex(JSON.stringify(plan.map((p) => [p.cuando, p.aviso, subs.find((s) => s.id === p.dispositivo)?.endpoint])));
