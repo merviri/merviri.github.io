@@ -4,10 +4,17 @@ import { Merviri, VERSION_APP, type CrearRemoto } from "./app/app";
 import { codigoDeHash } from "./cifrado/vinculo";
 import { ClienteGitHub } from "./github/cliente";
 import { AlmacenIdb } from "./local/almacen";
+import { hoy } from "./dominio/fechas";
+import { esMia, RUTA_TAREAS, type Tarea } from "./dominio/tareas";
+import { bloquearRedibujo, redibujoBloqueado } from "./ui/bloqueo";
 import { dialogo, h, icono, tostada } from "./ui/dom";
 import { vistaAjustes } from "./ui/vistas/ajustes";
 import { vistaBienvenida } from "./ui/vistas/bienvenida";
+import { avisarDibujoNuevo, dibujosSinVer, vistaDibujar, vistaDibujo, vistaDibujos } from "./ui/vistas/dibujos";
 import { vistaInicio } from "./ui/vistas/inicio";
+import { vistaLista, vistaListas } from "./ui/vistas/listas";
+import { vistaNota, vistaNotas } from "./ui/vistas/notas";
+import { vistaTareas } from "./ui/vistas/tareas";
 import { vistaToken } from "./ui/vistas/token";
 import { vistaVincularOtro } from "./ui/vistas/vincular";
 
@@ -29,23 +36,60 @@ const app = new Merviri(new AlmacenIdb(`merviri${sufijo}`), crearRemoto);
 let codigoVinculo = codigoDeHash(location.hash);
 if (codigoVinculo) history.replaceState(null, "", `${location.pathname}${location.search}#inicio`);
 
-type Ruta = "inicio" | "ajustes" | "vincular-otro" | "token";
-const VISTAS: Record<Ruta, (a: Merviri) => HTMLElement> = {
-  inicio: vistaInicio,
-  ajustes: vistaAjustes,
-  "vincular-otro": vistaVincularOtro,
-  token: vistaToken,
+/** Rutas: «#nombre» o «#nombre/parámetro». */
+const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
+  inicio: (a) => vistaInicio(a),
+  listas: (a) => vistaListas(a),
+  lista: (a, p) => vistaLista(a, p),
+  tareas: (a) => vistaTareas(a),
+  notas: (a) => vistaNotas(a),
+  nota: (a, p) => vistaNota(a, p),
+  dibujos: (a) => vistaDibujos(a),
+  dibujar: (a, p) => vistaDibujar(a, p || undefined),
+  dibujo: (a, p) => vistaDibujo(a, p),
+  ajustes: (a) => vistaAjustes(a),
+  "vincular-otro": (a) => vistaVincularOtro(a),
+  token: (a) => vistaToken(a),
 };
-const ruta = (): Ruta => {
-  const r = location.hash.slice(1) as Ruta;
-  return r in VISTAS ? r : "inicio";
-};
+/** Pestaña de la barra inferior a la que pertenece cada ruta. */
+const PESTANA: Record<string, string> = { lista: "listas", nota: "notas", dibujar: "dibujos", dibujo: "dibujos" };
+
+function ruta(): { nombre: string; param: string } {
+  const [nombre = "", ...resto] = location.hash.slice(1).split("/");
+  const param = resto.join("/");
+  if (!(nombre in VISTAS)) return { nombre: "inicio", param: "" };
+  if (["lista", "nota", "dibujo"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
+  return { nombre, param };
+}
 
 const principal = document.getElementById("principal")!;
 const estado = document.getElementById("estado")!;
 const avisos = document.getElementById("avisos")!;
 const irAjustes = document.getElementById("ir-ajustes")!;
+const navegacion = document.getElementById("navegacion")!;
 irAjustes.replaceChildren(icono("ajustes"));
+
+function pintarNavegacion() {
+  navegacion.hidden = app.fase !== "lista";
+  if (app.fase !== "lista") return;
+  const actual = PESTANA[ruta().nombre] ?? ruta().nombre;
+  const yo = app.persona;
+  const tareasHoy = app.lista<Tarea>(RUTA_TAREAS)
+    .filter((t) => !t.hecha && esMia(t, yo) && t.fecha !== null && t.fecha <= hoy()).length;
+  const dibujosNuevos = dibujosSinVer(app).length;
+  const pestanas: [string, string, string, number][] = [
+    ["inicio", "🏠", "Inicio", 0],
+    ["listas", "📝", "Listas", 0],
+    ["tareas", "✅", "Tareas", tareasHoy],
+    ["notas", "🗒️", "Notas", 0],
+    ["dibujos", "🎨", "Dibujos", dibujosNuevos],
+  ];
+  navegacion.replaceChildren(...pestanas.map(([id, emoji, nombre, n]) =>
+    h("a", { href: `#${id}`, class: "pestana", "aria-current": actual === id ? "page" : undefined },
+      h("span", { class: "emoji", "aria-hidden": "true" }, emoji),
+      h("span", {}, nombre),
+      n ? h("span", { class: "insignia", "aria-label": `${n} pendiente${n === 1 ? "" : "s"}` }, String(n)) : null)));
+}
 
 let faseMontada: string | null = null;
 let pendiente = false;
@@ -99,9 +143,17 @@ function pintarAvisos() {
   avisos.replaceChildren(...lista);
 }
 
+/** Campos de texto: mientras se escribe en ellos no se redibuja desde fuera. */
+function escribiendoEn(el: Element | null): el is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement {
+  if (!el || !principal.contains(el)) return false;
+  if (el.tagName === "TEXTAREA" || el.tagName === "SELECT") return true;
+  return el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit", "range", "color"].includes((el as HTMLInputElement).type);
+}
+
 function pintar(deFondo = false) {
   pintarEstado();
   pintarAvisos();
+  pintarNavegacion();
   irAjustes.hidden = app.fase !== "lista";
 
   if (app.fase === "cargando") {
@@ -121,23 +173,43 @@ function pintar(deFondo = false) {
     codigoVinculo = null;
     tostada("Este dispositivo ya está vinculado a Merviri.");
   }
-  // Lo que llega de fondo no redibuja mientras se escribe o hay un diálogo abierto.
+  // Lo que llega de fondo no redibuja mientras se escribe, hay un diálogo abierto
+  // o la pantalla lo pide (el lienzo). Excepción: los campos marcados como
+  // «refrescables» (añadir a una lista), que se redibujan conservando lo escrito.
+  const activo = document.activeElement;
+  let conservar: { nombre: string; valor: string; inicio: number | null } | null = null;
   if (deFondo && faseMontada === "lista") {
-    const activo = document.activeElement;
-    const escribiendo = activo && principal.contains(activo) && ["INPUT", "TEXTAREA", "SELECT"].includes(activo.tagName);
-    if (escribiendo || document.querySelector("dialog[open]")) {
+    const refrescable = escribiendoEn(activo) && activo.hasAttribute("data-refrescable");
+    if ((escribiendoEn(activo) && !refrescable) || document.querySelector("dialog[open]") || redibujoBloqueado()) {
       pendiente = true;
       return;
+    }
+    if (refrescable) {
+      const campo = activo as HTMLInputElement;
+      conservar = { nombre: campo.name, valor: campo.value, inicio: campo.selectionStart };
     }
   }
   pendiente = false;
   faseMontada = "lista";
-  principal.replaceChildren(VISTAS[ruta()](app));
+  const { nombre, param } = ruta();
+  const y = window.scrollY;
+  principal.replaceChildren(VISTAS[nombre]!(app, param));
+  if (deFondo) window.scrollTo(0, y);
+  if (conservar) {
+    const nuevo = principal.querySelector<HTMLInputElement>(`input[name="${conservar.nombre}"]`);
+    if (nuevo) {
+      nuevo.value = conservar.valor;
+      nuevo.focus({ preventScroll: true });
+      if (conservar.inicio !== null) nuevo.setSelectionRange(conservar.inicio, conservar.inicio);
+    }
+  }
+  if (!["dibujar", "dibujo"].includes(nombre)) avisarDibujoNuevo(app);
 }
 
 app.alCambiar((motivo) => pintar(motivo !== "fase" && motivo !== "manual"));
 window.addEventListener("hashchange", () => {
   pendiente = false;
+  bloquearRedibujo(null);
   if (app.fase === "lista") {
     pintar();
     window.scrollTo(0, 0);

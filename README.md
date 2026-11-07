@@ -51,12 +51,21 @@ llavero.json                clave de datos envuelta (contraseña y código de re
 datos/pareja.json           nombres, colores y fecha (cifrado)
 datos/dispositivos.json     dispositivos vinculados (cifrado)
 datos/acceso.json           token vigente, para renovarlo sin repetir el QR (cifrado)
+datos/listas.json           listas (nombre e icono)
+datos/listas/<id>.json      elementos de cada lista
+datos/tareas.json           tareas (responsable, turnos, fecha, repetición, recordatorio)
+datos/notas.json            notas
+datos/dibujos.json          ficha de cada dibujo (para quién, fondo)
+datos/dibujos/<id>.json     trazos de cada dibujo (puntos en un lienzo de 900×1600)
+datos/reacciones.json       visto y ❤️ de cada persona en cada dibujo
 ```
+
+Todos los ficheros de `datos/` van cifrados.
 
 Cada fichero de `datos/` tiene registros `{ id, actualizado, por, … }`.
 - **Si las dos cambian cosas distintas a la vez**, los cambios se suman.
 - **Si cambian el mismo registro**, gana el cambio más reciente.
-- **Los borrados** se guardan como marcas, para que también lleguen a los demás dispositivos.
+- **Los borrados** se guardan como marcas, para que también lleguen a los demás dispositivos. Las marcas se limpian a los 90 días.
 
 ## Desarrollo
 
@@ -77,7 +86,7 @@ Al subir a `main`, `.github/workflows/publicar.yml` pasa las pruebas, compila y 
 ## Fases
 
 - [x] **a.** Base: icono, conexión, cifrado, sincronización, instalación, vinculación por QR, renovación del token, recuperación.
-- [ ] **b.** Listas, tareas con turnos, notas y dibujos.
+- [x] **b.** Listas, tareas con turnos y recordatorios, notas y dibujos (con aviso al abrir la app).
 - [ ] **c.** Notificaciones (Web Push enviado por GitHub Actions).
 - [ ] **d.** Calendario común, horario habitual y fechas importantes.
 - [ ] **e.** Planes y deseos, Descubrir (agenda de Valladolid, mercadillos, sitios) y recomendador.

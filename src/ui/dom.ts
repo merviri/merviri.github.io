@@ -55,12 +55,13 @@ export function icono(nombre: "ajustes" | "atras" | "copiar" | "compartir" | "oj
   return el;
 }
 
-/** Mensaje breve en la parte inferior. */
-export function tostada(texto: string, tipo: "info" | "error" = "info") {
+/** Mensaje breve en la parte inferior, con una acción opcional («Deshacer»). */
+export function tostada(texto: string, tipo: "info" | "error" = "info", accion?: { texto: string; hacer: () => void }) {
   const host = document.getElementById("tostadas")!;
-  const t = h("div", { class: `tostada tostada-${tipo}`, role: tipo === "error" ? "alert" : "status" }, texto);
+  const t = h("div", { class: `tostada tostada-${tipo}`, role: tipo === "error" ? "alert" : "status" }, texto,
+    accion ? h("button", { type: "button", class: "tostada-accion", onclick: () => { t.remove(); accion.hacer(); } }, accion.texto) : null);
   host.appendChild(t);
-  setTimeout(() => t.remove(), tipo === "error" ? 7000 : 3500);
+  setTimeout(() => t.remove(), tipo === "error" ? 7000 : accion ? 6000 : 3500);
 }
 
 /** Diálogo con acciones. Devuelve la acción elegida (o null si se cierra). */

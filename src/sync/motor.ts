@@ -90,6 +90,19 @@ function leerFichero(valor: unknown, ruta: string): Record<string, Registro> {
 /** Un instante un milisegundo posterior (para que un cambio propio supere a su versión anterior). */
 const despues = (iso: string) => new Date(new Date(iso).getTime() + 1).toISOString();
 
+/** Las marcas de borrado se guardan 90 días; después se quitan del fichero al reescribirlo. */
+export const VIDA_BORRADOS_MS = 90 * 86_400_000;
+
+export function purgarBorrados(registros: Record<string, Registro>, ahora: string): Record<string, Registro> {
+  const limite = new Date(ahora).getTime() - VIDA_BORRADOS_MS;
+  const out: Record<string, Registro> = {};
+  for (const [id, r] of Object.entries(registros)) {
+    if (r.borrado && new Date(r.actualizado).getTime() < limite) continue;
+    out[id] = r;
+  }
+  return out;
+}
+
 export class Motor {
   private cache = new Map<string, EntradaCache>();
   private cola: Operacion[] = [];
@@ -335,10 +348,10 @@ export class Motor {
       const sinCambios = base && JSON.stringify(registros) === JSON.stringify(base.registros);
       try {
         if (!sinCambios) {
-          const fichero: FicheroDatos = { esquema: 1, registros };
+          const fichero: FicheroDatos = { esquema: 1, registros: purgarBorrados(registros, this.reloj()) };
           const texto = await cerrarSobre(this.clave, ruta, fichero);
           const sha = await remoto.escribir(ruta, texto, base?.sha ?? null, MENSAJE);
-          await this.guardarEntrada(ruta, { sha, registros });
+          await this.guardarEntrada(ruta, { sha, registros: fichero.registros });
         }
         const hechas = new Set(ops.map((o) => o.idOp));
         this.cola = this.cola.filter((o) => !hechas.has(o.idOp));

@@ -1,13 +1,17 @@
 import type { Merviri } from "../../app/app";
 import { fechaLarga, haceCuanto, hoy } from "../../dominio/fechas";
-import { contador, otraPersona } from "../../dominio/pareja";
+import { rutaElementos, type Elemento } from "../../dominio/listas";
+import { contador, esIdPersona, otraPersona } from "../../dominio/pareja";
+import { agrupar, esMia, recordatoriosPara, RUTA_TAREAS, type Tarea } from "../../dominio/tareas";
 import { campoSecreto, conBoton, h, tostada } from "../dom";
 import { texto } from "./comunes";
+import { dibujosSinVer } from "./dibujos";
+import { listasOrdenadas } from "./listas";
+import { filaTarea, marcarHecha } from "./tareas";
 
 /** Lo que llegará en las próximas fases. */
 const PROXIMAMENTE: [string, string][] = [
-  ["📝", "Listas"], ["✅", "Tareas"], ["🗒️", "Notas"], ["🎨", "Dibujos"], ["🔔", "Avisos"],
-  ["📅", "Calendario"], ["✨", "Planes"], ["💶", "Gastos"], ["🍝", "Menú"], ["📷", "Álbum"],
+  ["🔔", "Avisos"], ["📅", "Calendario"], ["✨", "Planes"], ["💶", "Gastos"], ["🍝", "Menú"], ["📷", "Álbum"],
 ];
 
 const DIA_SEMANA = new Intl.DateTimeFormat("es-ES", { weekday: "long", timeZone: "Europe/Madrid" });
@@ -20,12 +24,41 @@ export function vistaInicio(app: Merviri): HTMLElement {
   const c = pareja.juntasDesde ? contador(pareja.juntasDesde, hoyF) : null;
 
   const ultimaDeOtra = app.dispositivos().find((d) => d.persona === otra);
+  const tareas = app.lista<Tarea>(RUTA_TAREAS);
+  const recordatorios = recordatoriosPara(tareas, app.persona);
+  const grupos = agrupar(tareas.filter((t) => esMia(t, app.persona)), hoyF);
+  const paraHoy = [...grupos.atrasadas, ...grupos.hoy];
+  const nuevos = dibujosSinVer(app);
+  const listas = listasOrdenadas(app)
+    .map((l) => ({ l, n: app.lista<Elemento>(rutaElementos(l.id)).filter((e) => !e.hecho).length }))
+    .filter((x) => x.n > 0)
+    .slice(0, 4);
 
   return h("section", {},
     h("div", { class: "saludo" },
       h("h1", {}, "Hola, ", h("span", { class: `t-${yo.color}` }, yo.nombre), " ✨"),
       h("p", { class: "secundario" }, `${DIA_SEMANA.format(new Date())}, ${fechaLarga(hoyF)}`),
     ),
+
+    recordatorios.map((t) => {
+      const de = t.recordatorio && esIdPersona(t.recordatorio.por) ? pareja.personas[t.recordatorio.por].nombre : "";
+      return h("div", { class: "tarjeta tarjeta-rosa" },
+        h("p", {}, `🔔 ${de} te recuerda: `, h("b", {}, t.titulo)),
+        h("div", { class: "botones" },
+          h("button", { type: "button", class: "boton boton-primario", onclick: () => void marcarHecha(app, t) }, "¡Hecho!"),
+          h("button", {
+            type: "button", class: "boton",
+            onclick: () => void app.guardar<Tarea>(RUTA_TAREAS, { ...t, recordatorio: { ...t.recordatorio!, visto: new Date().toISOString() } }),
+          }, "Vale"),
+        ));
+    }),
+
+    nuevos.length
+      ? h("a", { class: "tarjeta tarjeta-rosa tarjeta-enlace", href: `#dibujo/${nuevos[0]!.id}` },
+        h("span", { class: "emoji-grande", "aria-hidden": "true" }, "🎨"),
+        h("span", { class: "crece" }, h("b", {}, nuevos.length === 1 ? "Tienes un dibujo nuevo" : `Tienes ${nuevos.length} dibujos nuevos`)),
+        h("span", { class: "flecha", "aria-hidden": "true" }, "›"))
+      : null,
 
     app.tocaPracticar() ? tarjetaPractica(app) : null,
 
@@ -46,8 +79,25 @@ export function vistaInicio(app: Merviri): HTMLElement {
         h("p", {}, "Poned la fecha y Merviri contará los días y os avisará de los aniversarios."),
         h("a", { class: "boton", href: "#ajustes" }, "Añadir la fecha")),
 
+    h("div", { class: "cabecera-vista arriba-mas" },
+      h("h2", {}, "Para hoy"),
+      h("a", { class: "enlace-suave", href: "#tareas" }, "Todas las tareas ›")),
+    paraHoy.length
+      ? h("ul", { class: "elementos" }, paraHoy.slice(0, 6).map((t) => filaTarea(app, t, hoyF)))
+      : h("p", { class: "secundario" }, "Nada pendiente para hoy ✨"),
+
+    listas.length
+      ? [
+        h("h2", { class: "arriba-mas" }, "Listas"),
+        h("ul", { class: "tarjetas-lista" }, listas.map(({ l, n }) => h("li", {}, h("a", { class: "tarjeta-enlace", href: `#lista/${l.id}` },
+          h("span", { class: "emoji-grande", "aria-hidden": "true" }, l.emoji),
+          h("span", { class: "crece" }, h("b", {}, l.nombre), h("small", { class: "secundario" }, `${n} pendiente${n === 1 ? "" : "s"}`)),
+          h("span", { class: "flecha", "aria-hidden": "true" }, "›"))))),
+      ]
+      : null,
+
     ultimaDeOtra
-      ? h("p", { class: "secundario" },
+      ? h("p", { class: "secundario arriba-mas" },
         h("i", { class: `punto-persona c-${pareja.personas[otra].color}`, "aria-hidden": "true" }), " ",
         `${pareja.personas[otra].nombre} abrió Merviri ${haceCuanto(ultimaDeOtra.ultimaVez)}.`)
       : h("div", { class: "tarjeta tarjeta-rosa" },

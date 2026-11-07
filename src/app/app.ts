@@ -19,7 +19,7 @@ import { ErrorConflicto, ErrorRemoto, ErrorRepoPublico } from "../github/errores
 import type { Conexion, InfoRepo, Remoto } from "../github/remoto";
 import type { Almacen } from "../local/almacen";
 import { AlmacenCifrado } from "../local/cifrado";
-import { Motor, type EstadoSync, type FicheroDatos } from "../sync/motor";
+import { Motor, type EstadoSync, type FicheroDatos, type Registro } from "../sync/motor";
 import { nuevoId } from "../util/bytes";
 
 /**
@@ -256,6 +256,22 @@ export class Merviri {
 
   get persona(): IdPersona {
     return this.dispositivo?.persona ?? "p1";
+  }
+
+  /** Atajos para las vistas: leer y escribir colecciones como la persona de este dispositivo. */
+  lista<T extends object>(ruta: string): Registro<T>[] {
+    return this.motor?.lista<T>(ruta) ?? [];
+  }
+  uno<T extends object>(ruta: string, id: string): Registro<T> | undefined {
+    return this.motor?.uno<T>(ruta, id);
+  }
+  guardar<T extends object>(ruta: string, datos: T & { id: string }): Promise<Registro<T>> {
+    if (!this.motor) throw new Error("Merviri no está lista.");
+    return this.motor.guardar<T>(ruta, datos, this.persona);
+  }
+  borrar(ruta: string, id: string): Promise<void> {
+    if (!this.motor) throw new Error("Merviri no está lista.");
+    return this.motor.borrar(ruta, id, this.persona);
   }
 
   pareja(): Pareja {
