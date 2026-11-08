@@ -16,7 +16,7 @@ export const RUTA_HORARIOS = "datos/horarios.json";
 
 export type Quien = IdPersona | "ambas";
 
-export type Categoria = "plan" | "trabajo" | "vacaciones" | "medico" | "familia" | "amigos" | "viaje" | "cumple" | "otro";
+export type Categoria = "plan" | "trabajo" | "vacaciones" | "festivo" | "medico" | "familia" | "amigos" | "viaje" | "cumple" | "otro";
 export const CATEGORIAS: { id: Categoria; emoji: string; nombre: string }[] = [
   { id: "plan", emoji: "✨", nombre: "Plan" },
   { id: "trabajo", emoji: "💼", nombre: "Trabajo" },
@@ -27,13 +27,18 @@ export const CATEGORIAS: { id: Categoria; emoji: string; nombre: string }[] = [
   { id: "viaje", emoji: "🧳", nombre: "Viaje" },
   { id: "cumple", emoji: "🎂", nombre: "Cumpleaños" },
   { id: "otro", emoji: "📌", nombre: "Otro" },
+  // Solo los festivos que pone la app (no se elige al apuntar).
+  { id: "festivo", emoji: "🎉", nombre: "Festivo" },
 ];
 export const emojiCategoria = (c: Categoria) => CATEGORIAS.find((x) => x.id === c)?.emoji ?? "📌";
 /**
  * «Vacaciones / libre»: esos días (o esas horas) no cuenta el horario habitual
  * de esa persona, y no la ocupan. Sirve para vacaciones, festivos y tardes libres.
  */
-export const esLibre = (e: Pick<Evento, "categoria">) => e.categoria === "vacaciones";
+export const esLibre = (e: Pick<Evento, "categoria">) => e.categoria === "vacaciones" || e.categoria === "festivo";
+/** Si ese día (o rato) libre es de esta persona. Los festivos, según quién los libra. */
+export const libraEse = (e: Pick<Evento, "categoria" | "quien" | "libran">, persona: IdPersona) =>
+  e.categoria === "festivo" ? (e.libran ?? []).includes(persona) : e.quien === persona || e.quien === "ambas";
 
 export type UnidadRep = "dia" | "semana" | "mes" | "anio";
 export interface RepeticionEvento {
@@ -70,6 +75,8 @@ export interface Evento {
   /** «Ocupada» sin detalles: la otra solo ve que está ocupada. */
   privado: boolean;
   aviso: AvisoEvento;
+  /** Solo en los festivos (que no se guardan): quién libra ese día. */
+  libran?: IdPersona[];
 }
 
 export const rutaDeEvento = (e: Pick<Evento, "repeticion" | "inicio">) => (e.repeticion ? RUTA_REPETIDOS : rutaAnio(e.inicio.slice(0, 4)));
@@ -254,7 +261,7 @@ export function horarioDelDia(h: Horario | undefined, dia: Fecha, persona: IdPer
   let tramos: TramoHorario[] = bloquesDelDia(h, dia).map((b) => ({ desde: minutos(b.desde), hasta: minutos(b.hasta), etiqueta: b.etiqueta }));
   if (!tramos.length) return tramos;
   for (const e of eventos) {
-    if (!esLibre(e) || (e.quien !== persona && e.quien !== "ambas")) continue;
+    if (!esLibre(e) || !libraEse(e, persona)) continue;
     for (const o of ocurrencias(e, dia, dia)) {
       const [a, b] = intervaloEnDia(e, o, dia);
       tramos = tramos.flatMap((t) => [

@@ -18,7 +18,9 @@ import {
   type Quien,
   type RepeticionEvento,
 } from "../../dominio/calendario";
-import { esFecha, fechaCorta, fechaLarga, type Fecha } from "../../dominio/fechas";
+import { esFecha, fechaCorta, fechaLarga, hoy, type Fecha } from "../../dominio/fechas";
+import { AJUSTES_FESTIVOS, ID_AJUSTES_FESTIVOS, listaFestivos, RUTA_FESTIVOS, ULTIMO_ANIO_FESTIVOS, type AjustesFestivos } from "../../dominio/festivos";
+import { festivosLocales } from "../../servicios/festivos";
 import { esIdPersona, otraPersona, type IdPersona } from "../../dominio/pareja";
 import type { Registro } from "../../sync/motor";
 import { nuevoId } from "../../util/bytes";
@@ -69,7 +71,9 @@ export async function verEvento(app: Merviri, o: Ocurrencia<EventoVisible>) {
     e.notas ? h("p", { class: "notas-evento" }, e.notas) : null,
     e.privado && !ajeno ? h("p", { class: "secundario" }, `🔒 ${pareja.personas[otraPersona(app.persona)].nombre} solo ve «Ocupada».`) : null,
     autor && !e.virtual ? h("p", { class: "secundario pequeno" }, `Lo apuntó ${autor}.`) : null,
-    e.virtual ? h("p", { class: "secundario pequeno" }, "La fecha se cambia en Ajustes → Vosotras.") : null,
+    e.categoria === "festivo"
+      ? h("p", { class: "secundario pequeno" }, `${textoLibran(app, e.libran ?? [])} Festivo oficial (BOCyL y fiestas locales de Valladolid). Se cambia en Calendario → 🎉 Festivos.`)
+      : e.virtual ? h("p", { class: "secundario pequeno" }, "La fecha se cambia en Ajustes → Vosotras.") : null,
   );
   const acciones: { texto: string; valor: string; tipo?: "primario" | "peligro" | "normal" }[] = [{ texto: "Cerrar", valor: "cerrar" }];
   if (!e.virtual && !ajeno) {
@@ -141,7 +145,7 @@ export async function editarEvento(app: Merviri, e: Registro<Evento> | null, dia
     h("option", { value: yo, selected: base.quien === yo }, `${pareja.personas[yo].nombre} (yo)`),
     h("option", { value: otra, selected: base.quien === otra }, pareja.personas[otra].nombre));
   const categorias = h("div", { class: "selector-categoria", role: "radiogroup", "aria-label": "Tipo" },
-    CATEGORIAS.map((c) => h("label", {},
+    CATEGORIAS.filter((c) => c.id !== "festivo").map((c) => h("label", {},
       h("input", { type: "radio", name: "categoria", value: c.id, checked: base.categoria === c.id }),
       h("span", {}, `${c.emoji} ${c.nombre}`))));
   const todoDia = h("input", { type: "checkbox", name: "todoElDia", checked: base.todoElDia });
@@ -290,4 +294,46 @@ export function editarHorario(app: Merviri, persona: IdPersona = app.persona) {
   pintarLista();
   document.body.appendChild(dlg);
   dlg.showModal();
+}
+
+// ---------------------------------------------------------------------------
+// Festivos
+// ---------------------------------------------------------------------------
+
+function textoLibran(app: Merviri, libran: IdPersona[]): string {
+  const ps = app.pareja().personas;
+  if (libran.length === 2) return "Lo libráis las dos.";
+  if (libran.length === 1) return `Lo libra ${ps[libran[0]!].nombre}.`;
+  return "No lo libra ninguna.";
+}
+
+const FECHA_FESTIVO = new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
+/** Qué festivos se ven y quién los libra. */
+export async function ajustesFestivos(app: Merviri) {
+  const aj = app.uno<AjustesFestivos>(RUTA_FESTIVOS, ID_AJUSTES_FESTIVOS) ?? AJUSTES_FESTIVOS;
+  const ps = app.pareja().personas;
+  const hoyF = hoy();
+  const proximos = listaFestivos(festivosLocales()).filter((f) => f.fecha >= hoyF).slice(0, 14);
+  const anioSiguiente = +hoyF.slice(0, 4) + 1;
+  await dialogoFormulario("🎉 Festivos de Valladolid", [
+    h("p", { class: "secundario pequeno" }, "Los de la Comunidad (con los traslados a lunes del BOCyL) y las dos fiestas locales de la ciudad, que se descargan solas de los datos abiertos de la Junta."),
+    h("label", { class: "casilla" }, h("input", { type: "checkbox", name: "mostrar", checked: aj.mostrar }), h("span", {}, "Verlos en el calendario")),
+    h("fieldset", { class: "campo grupo" }, h("legend", { class: "grupo-titulo" }, "¿Quién los libra?"),
+      (["p1", "p2"] as const).map((p) => h("label", { class: "casilla" },
+        h("input", { type: "checkbox", name: `libra-${p}`, checked: aj.libran[p] }), h("span", {}, ps[p].nombre))),
+      h("p", { class: "ayuda" }, "Quien los libra no tiene su horario habitual esos días, y «¿Qué hacemos?» los ve libres (¡puentes!).")),
+    proximos.length ? [h("h3", { class: "arriba" }, "Próximos"),
+      h("ul", { class: "lista lista-festivos" }, proximos.map((f) => h("li", {},
+        h("span", { class: "fecha-festivo" }, FECHA_FESTIVO.format(new Date(`${f.fecha}T12:00:00Z`))), h("span", { class: "crece" }, f.nombre))))] : null,
+    ULTIMO_ANIO_FESTIVOS < anioSiguiente
+      ? h("p", { class: "ayuda arriba" }, `Aún no están los festivos de la Comunidad de ${anioSiguiente}: la Junta los publica en primavera y hay que añadirlos a Merviri.`)
+      : null,
+  ], "Guardar", async (d) => {
+    await app.guardar<AjustesFestivos>(RUTA_FESTIVOS, {
+      id: ID_AJUSTES_FESTIVOS, mostrar: d.get("mostrar") === "on",
+      libran: { p1: d.get("libra-p1") === "on", p2: d.get("libra-p2") === "on" },
+    });
+    tostada("Festivos guardados ✨");
+  });
 }

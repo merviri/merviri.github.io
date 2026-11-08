@@ -159,6 +159,22 @@ export function vistaAlbum(app: Merviri, param = ""): HTMLElement {
     pestana === "fotos" ? pestanaFotos(app, fotos) : pestana === "albumes" ? pestanaAlbumes(app, fotos) : pestanaPapelera(app, papelera),
     h("p", { class: "secundario pequeno arriba-mas" },
       `Ocupado: ${formatoBytes(total)} de ${formatoBytes(LIMITE_REPO * REPOS_FOTOS.length)}. Las fotos van cifradas: solo vosotras podéis verlas.`),
+    ayudaCompartir(),
+  );
+}
+
+let ayudaAbierta = false;
+
+/** Por qué puede no salir «Merviri» al compartir desde la galería (Android). */
+function ayudaCompartir(): HTMLElement {
+  const instalada = matchMedia("(display-mode: standalone)").matches;
+  return h("details", { class: "hechos arriba", open: ayudaAbierta, ontoggle: (ev: Event) => { ayudaAbierta = (ev.currentTarget as HTMLDetailsElement).open; } },
+    h("summary", {}, "¿No sale Merviri al compartir desde la galería?"),
+    h("ol", { class: "pequeno" },
+      instalada ? null : h("li", {}, h("b", {}, "Ahora la estás usando en el navegador. "), "Para que salga en «Compartir» hay que instalarla: en Chrome, ⋮ → «Instalar aplicación», y abrirla desde su icono."),
+      h("li", {}, "Si ya la teníais instalada de antes, Android tarda en enterarse de la novedad (Chrome lo revisa como mucho una vez al día al abrirla). Ábrela desde su icono, ciérrala y prueba un rato después."),
+      h("li", {}, "Si al día siguiente sigue sin salir: quita el icono de Merviri y vuelve a instalarla desde Chrome. Antes, ten otro dispositivo vinculado, por si al reinstalar te pidiera volver a vincular este con el QR."),
+      h("li", {}, "En la hoja de «Compartir», Merviri puede estar al final de la lista: desliza o toca «Más».")),
   );
 }
 

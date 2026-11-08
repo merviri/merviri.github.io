@@ -73,7 +73,7 @@ export function vistaQueHacemos(app: Merviri): HTMLElement {
     p1: app.uno<Horario>(RUTA_HORARIOS, "p1"), p2: app.uno<Horario>(RUTA_HORARIOS, "p2"),
   };
   const tiempo = (p: Plan, f: Fecha) => { const c = coords(p); return previsionGuardada(c.lat, c.lon, f); };
-  const eventos = app.eventos();
+  const eventos = app.eventosConFestivos();
   const misPlanes = planes(app);
   const sugerencias = recomendar({ planes: misPlanes, ganas: ganasTodas(app), eventos, horarios, hoy: hoyF, dias: semanas * 7, tiempo, descartados });
   // Del catálogo: ideas que no están en vuestros planes, por si os apetece algo nuevo.

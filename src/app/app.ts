@@ -1,3 +1,5 @@
+import { AJUSTES_FESTIVOS, eventosFestivos, ID_AJUSTES_FESTIVOS, RUTA_FESTIVOS, type AjustesFestivos } from "../dominio/festivos";
+import { festivosLocales } from "../servicios/festivos";
 import { RUTA_CAPSULAS, RUTA_FICHAS } from "../dominio/juntas";
 import { ErrorDescifrado } from "../cifrado/errores";
 import {
@@ -376,6 +378,12 @@ export class Merviri {
   eventos(): Registro<Evento>[] {
     if (!this.motor) return [];
     return this.motor.rutasCon(PREFIJO_CALENDARIO).flatMap((r) => this.lista<Evento>(r));
+  }
+
+  /** Los eventos y, además, los festivos de Valladolid (no se guardan: se calculan). */
+  eventosConFestivos(): Evento[] {
+    const aj = this.uno<AjustesFestivos>(RUTA_FESTIVOS, ID_AJUSTES_FESTIVOS) ?? AJUSTES_FESTIVOS;
+    return [...this.eventos(), ...eventosFestivos(aj, festivosLocales())];
   }
 
   /** Guarda un evento en su fichero; si cambió de fichero (otro año, o pasa a repetirse), lo quita del anterior. */

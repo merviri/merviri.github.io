@@ -19,7 +19,7 @@ import { otraPersona, type IdPersona } from "../../dominio/pareja";
 import { esMia, RUTA_TAREAS, type Tarea } from "../../dominio/tareas";
 import type { Registro } from "../../sync/motor";
 import { h } from "../dom";
-import { colorDe, diaLargo, editarEvento, editarHorario, textoQuien, verEvento, type EventoVisible } from "./evento";
+import { ajustesFestivos, colorDe, diaLargo, editarEvento, editarHorario, textoQuien, verEvento, type EventoVisible } from "./evento";
 import { filaTarea } from "./tareas";
 
 type Vista = "mes" | "semana" | "agenda";
@@ -46,7 +46,7 @@ function eventosVisibles(app: Merviri): EventoVisible[] {
   const yo = app.persona;
   const otra = otraPersona(yo);
   const pareja = app.pareja();
-  const lista: EventoVisible[] = app.eventos().map((e) => visibleComo(e, yo));
+  const lista: EventoVisible[] = app.eventosConFestivos().map((e) => (e.categoria === "festivo" ? { ...e, virtual: true as const } : visibleComo(e, yo)));
   if (pareja.juntasDesde) {
     lista.push({
       id: "aniversario", titulo: "Vuestro aniversario 💜", quien: "ambas", categoria: "plan", inicio: pareja.juntasDesde,
@@ -138,6 +138,7 @@ function vistaSemana(app: Merviri, eventos: EventoVisible[], tareas: Tarea[]): H
   const yo = app.persona;
   const otra = otraPersona(yo);
   const horarios = (filtro === "otra" ? [otra] : filtro === "mio" ? [yo] : [yo, otra]) as IdPersona[];
+  const todos = app.eventosConFestivos();
 
   const cabecera = h("div", { class: "semana-cabecera" }, h("span", {}),
     dias.map((d, i) => h("button", {
@@ -158,7 +159,7 @@ function vistaSemana(app: Merviri, eventos: EventoVisible[], tareas: Tarea[]): H
     for (const p of horarios) {
       const hor = app.uno<Horario>(RUTA_HORARIOS, p);
       // Sin los días u horas de vacaciones / libres.
-      for (const b of horarioDelDia(hor, d, p, app.eventos())) {
+      for (const b of horarioDelDia(hor, d, p, todos)) {
         const franja = h("div", { class: `franja c-${app.pareja().personas[p].color} ${p === "p1" ? "izq" : "der"}`, title: `${app.pareja().personas[p].nombre}: ${b.etiqueta}` });
         franja.style.top = `${(b.desde / 60) * ALTO_HORA}px`;
         franja.style.height = `${((b.hasta - b.desde) / 60) * ALTO_HORA}px`;
@@ -279,6 +280,7 @@ export function vistaCalendario(app: Merviri, param = ""): HTMLElement {
         type: "button", class: "boton",
         onclick: () => void editarEvento(app, null, diaSel, { categoria: "vacaciones", titulo: "Vacaciones", todoElDia: true, quien: app.persona }),
       }, "🌴 Vacaciones o día libre"),
+      h("button", { type: "button", class: "boton", onclick: () => void ajustesFestivos(app) }, "🎉 Festivos"),
       h("button", {
         type: "button", class: "boton",
         onclick: () => void editarEvento(app, null, diaSel, { categoria: "cumple", titulo: "Cumpleaños de ", todoElDia: true, repeticion: { cada: 1, unidad: "anio" }, quien: "ambas" }),
@@ -289,7 +291,7 @@ export function vistaCalendario(app: Merviri, param = ""): HTMLElement {
 /** Para la portada: lo de hoy y lo de los próximos días (para las dos, visto por mí). */
 export function eventosDeHoyYProximos(app: Merviri, dias = 3) {
   const yo = app.persona;
-  const visibles = app.eventos().map((e) => visibleComo(e, yo)) as EventoVisible[];
+  const visibles = app.eventosConFestivos().map((e) => (e.categoria === "festivo" ? { ...e, virtual: true as const } : visibleComo(e, yo))) as EventoVisible[];
   const hoyF = hoy();
   const proximos: { dia: Fecha; ocs: Ocurrencia<EventoVisible>[] }[] = [];
   for (let i = 1; i <= dias; i++) {

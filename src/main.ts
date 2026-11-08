@@ -17,6 +17,7 @@ import { vistaBote, vistaGastos } from "./ui/vistas/gastos";
 import { vistaAlbum, vistaFoto } from "./ui/vistas/album";
 import { vistaCompartido } from "./ui/vistas/compartido";
 import { vistaMas } from "./ui/vistas/mas";
+import { actualizarFestivosLocales } from "./servicios/festivos";
 import { pendientesNosotras, vistaCapsulas, vistaDecidir, vistaDeseos, vistaFicha, vistaNosotras, vistaNuestroAnio, vistaPreguntas, vistaVotacion } from "./ui/vistas/juntas";
 import { esIdPersona, type IdPersona } from "./dominio/pareja";
 import { vistaMenu, vistaReceta, vistaRecetas } from "./ui/vistas/menu";
@@ -311,6 +312,10 @@ void app.arrancar().catch((e: unknown) => {
     h("p", {}, e instanceof Error ? e.message : String(e))));
 });
 void revisarVersion();
+// Fiestas locales de Valladolid (datos abiertos de la Junta): como mucho una vez por semana.
+const festivos = () => void actualizarFestivosLocales().then((cambio) => { if (cambio) app.refrescar(); }, () => undefined);
+festivos();
+setInterval(festivos, 6 * 3600 * 1000);
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   void navigator.serviceWorker.register("/sw.js", { scope: "/" }).then(async () => {

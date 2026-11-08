@@ -676,3 +676,7 @@ a.ficha { text-decoration: none; color: inherit; }
 .desglose summary { cursor: pointer; font-weight: 700; }
 .desglose .lista { margin-top: 0.4rem; background: var(--superficie); border-radius: var(--radio-s); padding: 0.2rem 0.7rem; color: var(--texto); }
 .desglose .lista li { display: flex; gap: 0.5rem; padding: 0.3rem 0; }
+
+/* Festivos */
+.lista-festivos li { padding: 0.45rem 0; }
+.fecha-festivo { min-width: 6.5rem; color: var(--texto-2); font-weight: 700; text-transform: capitalize; }
