@@ -1,4 +1,4 @@
-import type { Evento, Horario } from "../src/dominio/calendario";
+import { horarioDelDia, type Evento, type Horario } from "../src/dominio/calendario";
 import { CATALOGO, FECHAS_ESPECIALES, proximaVez } from "../src/dominio/ideas";
 import { encajaFecha, filtrar, FILTRO_INICIAL, PLAN_VACIO, problemaPlan, textoReserva, type Ganas, type Plan } from "../src/dominio/planes";
 import { cabe, huecos, libresComunes, momentosDe, ocupado, recomendar, tiempoEncaja, type Prevision } from "../src/dominio/recomendar";
@@ -33,6 +33,30 @@ describe("huecos libres de las dos", () => {
     expect(hs.find((x) => x.dia === "2026-11-10")?.tipo).toBe("media"); // tarde de 15:00 a 23:00 = 8 h
     const sinTrabajo = huecos("2026-12-05", 4, [], {});
     expect(sinTrabajo.some((x) => x.tipo === "viaje" && x.dia === "2026-12-05" && x.hastaDia === "2026-12-08")).toBe(true);
+  });
+
+  it("las vacaciones anulan el horario habitual de esa persona (y no ocupan)", () => {
+    const vacas = ev({ id: "v", titulo: "Vacaciones", categoria: "vacaciones", quien: "p1", todoElDia: true, horaInicio: null, horaFin: null, inicio: "2026-11-16", fin: "2026-11-20" });
+    // Lunes de vacaciones: Elvira libre todo el día; María sigue trabajando.
+    expect(ocupado("2026-11-16", "p1", [vacas], trabajo("p1"))).toEqual([]);
+    expect(ocupado("2026-11-16", "p2", [vacas], trabajo("p2"))).toEqual([[480, 900]]);
+    expect(horarioDelDia(trabajo("p1"), "2026-11-16", "p1", [vacas])).toEqual([]);
+    expect(horarioDelDia(trabajo("p1"), "2026-11-23", "p1", [vacas])).toEqual([{ desde: 480, hasta: 900, etiqueta: "Trabajo" }]);
+    // Si son de las dos (o María no trabaja), salen días enteros y un hueco de viaje.
+    const ambas = { ...vacas, quien: "ambas" as const };
+    const hs = huecos("2026-11-14", 9, [ambas], { p1: trabajo("p1"), p2: trabajo("p2") });
+    expect(hs.some((x) => x.tipo === "viaje" && x.dia === "2026-11-14" && x.hastaDia === "2026-11-22")).toBe(true);
+  });
+
+  it("una tarde libre quita solo esas horas del horario", () => {
+    const tarde = ev({ id: "t", titulo: "Tarde libre", categoria: "vacaciones", quien: "p1", horaInicio: "12:00", horaFin: "15:00", inicio: "2026-11-17", fin: "2026-11-17" });
+    expect(horarioDelDia(trabajo("p1"), "2026-11-17", "p1", [tarde])).toEqual([{ desde: 480, hasta: 720, etiqueta: "Trabajo" }]);
+    // Un hueco en medio de la jornada parte el bloque en dos.
+    const medico = { ...tarde, horaInicio: "10:00", horaFin: "11:00" };
+    expect(horarioDelDia(trabajo("p1"), "2026-11-17", "p1", [medico])).toEqual([
+      { desde: 480, hasta: 600, etiqueta: "Trabajo" }, { desde: 660, hasta: 900, etiqueta: "Trabajo" },
+    ]);
+    expect(ocupado("2026-11-17", "p1", [tarde], trabajo("p1"))).toEqual([[480, 720]]);
   });
 
   it("qué cabe en cada hueco y en qué momento", () => {

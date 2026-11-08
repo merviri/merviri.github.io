@@ -125,7 +125,7 @@ Al subir a `main`, `.github/workflows/publicar.yml` pasa las pruebas, compila y 
 - [x] **a.** Base: icono, conexión, cifrado, sincronización, instalación, vinculación por QR, renovación del token, recuperación.
 - [x] **b.** Listas, tareas con turnos y recordatorios, notas y dibujos (con aviso al abrir la app).
 - [x] **c.** Avisos (Web Push): dibujos, ❤️, «recuérdaselo», tareas y listas al momento; resumen de la mañana y aniversarios con hora.
-- [x] **d.** Calendario común (mes, semana con horas y agenda), «ocupada» sin detalles, cumpleaños, horario habitual y recordatorios.
+- [x] **d.** Calendario común (mes, semana con horas y agenda), «ocupada» sin detalles, cumpleaños, horario habitual (con «🌴 Vacaciones / libre», que lo anula esos días u horas) y recordatorios.
 - [x] **e.** Planes y deseos (plazo, dificultad, duración, coste, reserva, clima, temporada, ganas de cada una), Descubrir (catálogo, agenda de la Junta, fechas especiales, sitios cercanos) y «¿Qué hacemos?» (huecos libres + tiempo de Open-Meteo).
 - [x] **f.** Gastos tipo Tricount: un único balance entre las dos que suma todos sus botes (Casa, viajes, planes: los botes sirven para ver cuánto ha costado cada cosa) y botes con amigos con sus propias cuentas, repartos a partes iguales, por partes o por importes, saldos y cómo saldar, varias monedas (cambio del BCE), gastos fijos mensuales, resumen y CSV.
 - [x] **g.** Recetas, menú semanal (comida y cena, quién cocina) y lista de la compra por secciones del súper.

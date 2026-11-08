@@ -1,5 +1,5 @@
 import type { Aviso } from "../avisos/push";
-import { delDia, esDe, ocurrencias, type Evento } from "./calendario";
+import { delDia, esDe, esLibre, ocurrencias, type Evento } from "./calendario";
 import { esFecha, mismoDiaEnAnio, sumarDias, ZONA, type Fecha } from "./fechas";
 import { esParaMi, type Capsula, type Ficha } from "./juntas";
 import { contador, otraPersona, type IdPersona, type Pareja } from "./pareja";
@@ -139,7 +139,7 @@ export function planificar(d: {
       const pendientes = d.tareas
         .filter((t) => !t.hecha && t.fecha && esFecha(t.fecha) && t.fecha <= dia && esMia(t, s.persona))
         .sort((a, b) => (a.fecha ?? "").localeCompare(b.fecha ?? "") || a.titulo.localeCompare(b.titulo, "es"));
-      const planes = delDia((d.eventos ?? []).filter((e) => esDe(e, s.persona)), dia)
+      const planes = delDia((d.eventos ?? []).filter((e) => esDe(e, s.persona) && !esLibre(e)), dia)
         .map((o) => (o.evento.todoElDia || o.dia < dia ? o.evento.titulo : `${o.evento.titulo} (${o.evento.horaInicio})`));
       if (!pendientes.length && !planes.length) continue;
       const atrasadas = pendientes.filter((t) => t.fecha! < dia).length;

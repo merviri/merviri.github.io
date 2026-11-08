@@ -1,6 +1,6 @@
 import type { Merviri } from "../../app/app";
 import {
-  bloquesDelDia,
+  horarioDelDia,
   cuadriculaMes,
   delDia,
   emojiCategoria,
@@ -157,12 +157,11 @@ function vistaSemana(app: Merviri, eventos: EventoVisible[], tareas: Tarea[]): H
     // Horario habitual: franjas suaves (izquierda la persona turquesa, derecha la rosa).
     for (const p of horarios) {
       const hor = app.uno<Horario>(RUTA_HORARIOS, p);
-      for (const b of bloquesDelDia(hor, d)) {
+      // Sin los días u horas de vacaciones / libres.
+      for (const b of horarioDelDia(hor, d, p, app.eventos())) {
         const franja = h("div", { class: `franja c-${app.pareja().personas[p].color} ${p === "p1" ? "izq" : "der"}`, title: `${app.pareja().personas[p].nombre}: ${b.etiqueta}` });
-        const ini = +b.desde.slice(0, 2) * 60 + +b.desde.slice(3);
-        const fin = +b.hasta.slice(0, 2) * 60 + +b.hasta.slice(3);
-        franja.style.top = `${(ini / 60) * ALTO_HORA}px`;
-        franja.style.height = `${((fin - ini) / 60) * ALTO_HORA}px`;
+        franja.style.top = `${(b.desde / 60) * ALTO_HORA}px`;
+        franja.style.height = `${((b.hasta - b.desde) / 60) * ALTO_HORA}px`;
         col.append(franja);
       }
     }
@@ -276,6 +275,10 @@ export function vistaCalendario(app: Merviri, param = ""): HTMLElement {
     vista !== "agenda" ? listaDelDia(app, eventos, tareas, diaSel) : null,
     h("div", { class: "botones arriba-mas" },
       h("button", { type: "button", class: "boton", onclick: () => editarHorario(app) }, "🕘 Mi horario habitual"),
+      h("button", {
+        type: "button", class: "boton",
+        onclick: () => void editarEvento(app, null, diaSel, { categoria: "vacaciones", titulo: "Vacaciones", todoElDia: true, quien: app.persona }),
+      }, "🌴 Vacaciones o día libre"),
       h("button", {
         type: "button", class: "boton",
         onclick: () => void editarEvento(app, null, diaSel, { categoria: "cumple", titulo: "Cumpleaños de ", todoElDia: true, repeticion: { cada: 1, unidad: "anio" }, quien: "ambas" }),

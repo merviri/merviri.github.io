@@ -16,10 +16,11 @@ export const RUTA_HORARIOS = "datos/horarios.json";
 
 export type Quien = IdPersona | "ambas";
 
-export type Categoria = "plan" | "trabajo" | "medico" | "familia" | "amigos" | "viaje" | "cumple" | "otro";
+export type Categoria = "plan" | "trabajo" | "vacaciones" | "medico" | "familia" | "amigos" | "viaje" | "cumple" | "otro";
 export const CATEGORIAS: { id: Categoria; emoji: string; nombre: string }[] = [
   { id: "plan", emoji: "✨", nombre: "Plan" },
   { id: "trabajo", emoji: "💼", nombre: "Trabajo" },
+  { id: "vacaciones", emoji: "🌴", nombre: "Vacaciones / libre" },
   { id: "medico", emoji: "🩺", nombre: "Médico" },
   { id: "familia", emoji: "👪", nombre: "Familia" },
   { id: "amigos", emoji: "🥂", nombre: "Amigos" },
@@ -28,6 +29,11 @@ export const CATEGORIAS: { id: Categoria; emoji: string; nombre: string }[] = [
   { id: "otro", emoji: "📌", nombre: "Otro" },
 ];
 export const emojiCategoria = (c: Categoria) => CATEGORIAS.find((x) => x.id === c)?.emoji ?? "📌";
+/**
+ * «Vacaciones / libre»: esos días (o esas horas) no cuenta el horario habitual
+ * de esa persona, y no la ocupan. Sirve para vacaciones, festivos y tardes libres.
+ */
+export const esLibre = (e: Pick<Evento, "categoria">) => e.categoria === "vacaciones";
 
 export type UnidadRep = "dia" | "semana" | "mes" | "anio";
 export interface RepeticionEvento {
@@ -228,5 +234,36 @@ export function problemaBloque(b: BloqueHorario): string | null {
 }
 
 export const bloquesDelDia = (h: Horario | undefined, f: Fecha) => (h?.bloques ?? []).filter((b) => b.dias.includes(diaSemana(f)));
+
+/** Rato (en minutos) que ocupa una ocurrencia de un evento en un día concreto. */
+export function intervaloEnDia(e: Evento, o: { dia: Fecha; hastaDia: Fecha }, dia: Fecha): [number, number] {
+  if (e.todoElDia || !e.horaInicio) return [0, 1440];
+  const ini = o.dia === dia ? minutos(e.horaInicio) : 0;
+  const fin = o.hastaDia === dia ? (e.horaFin ? minutos(e.horaFin) : Math.min(1440, minutos(e.horaInicio) + 60)) : 1440;
+  return [ini, Math.max(ini + 30, fin)];
+}
+
+export interface TramoHorario {
+  desde: number;
+  hasta: number;
+  etiqueta: string;
+}
+
+/** Horario habitual de una persona un día, quitando sus vacaciones y ratos libres. */
+export function horarioDelDia(h: Horario | undefined, dia: Fecha, persona: IdPersona, eventos: Evento[]): TramoHorario[] {
+  let tramos: TramoHorario[] = bloquesDelDia(h, dia).map((b) => ({ desde: minutos(b.desde), hasta: minutos(b.hasta), etiqueta: b.etiqueta }));
+  if (!tramos.length) return tramos;
+  for (const e of eventos) {
+    if (!esLibre(e) || (e.quien !== persona && e.quien !== "ambas")) continue;
+    for (const o of ocurrencias(e, dia, dia)) {
+      const [a, b] = intervaloEnDia(e, o, dia);
+      tramos = tramos.flatMap((t) => [
+        ...(t.desde < a ? [{ ...t, hasta: Math.min(t.hasta, a) }] : []),
+        ...(t.hasta > b ? [{ ...t, desde: Math.max(t.desde, b) }] : []),
+      ]).filter((t) => t.hasta > t.desde);
+    }
+  }
+  return tramos;
+}
 
 export const LETRAS_DIA = ["L", "M", "X", "J", "V", "S", "D"];

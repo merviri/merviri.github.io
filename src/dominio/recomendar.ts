@@ -1,4 +1,4 @@
-import { bloquesDelDia, diaSemana, ocurrencias, type Evento, type Horario } from "./calendario";
+import { diaSemana, esLibre, horarioDelDia, intervaloEnDia, ocurrencias, type Evento, type Horario } from "./calendario";
 import { diasEntre, sumarDias, type Fecha } from "./fechas";
 import type { IdPersona } from "./pareja";
 import { encajaFecha, ganasDe, sumaGanas, type Duracion, type Ganas, type Momento, type Plan } from "./planes";
@@ -28,22 +28,21 @@ type Intervalo = [number, number];
 
 const min = (h: string) => +h.slice(0, 2) * 60 + +h.slice(3, 5);
 
-/** Ratos ocupados de una persona un día (eventos suyos o de las dos, y su horario habitual). */
+/**
+ * Ratos ocupados de una persona un día: eventos suyos o de las dos, y su
+ * horario habitual (menos sus vacaciones o ratos libres, que no ocupan).
+ */
 export function ocupado(dia: Fecha, persona: IdPersona, eventos: Evento[], horario: Horario | undefined): Intervalo[] {
   const out: Intervalo[] = [];
   for (const e of eventos) {
     if (e.quien !== persona && e.quien !== "ambas") continue;
+    if (esLibre(e)) continue;
     for (const o of ocurrencias(e, dia, dia)) {
-      if (e.todoElDia || !e.horaInicio) {
-        if (e.categoria !== "cumple") out.push([0, 1440]);
-        continue;
-      }
-      const ini = o.dia === dia ? min(e.horaInicio) : 0;
-      const fin = o.hastaDia === dia ? (e.horaFin ? min(e.horaFin) : Math.min(1440, min(e.horaInicio) + 60)) : 1440;
-      out.push([ini, Math.max(ini + 30, fin)]);
+      if ((e.todoElDia || !e.horaInicio) && e.categoria === "cumple") continue;
+      out.push(intervaloEnDia(e, o, dia));
     }
   }
-  for (const b of bloquesDelDia(horario, dia)) out.push([min(b.desde), min(b.hasta)]);
+  for (const t of horarioDelDia(horario, dia, persona, eventos)) out.push([t.desde, t.hasta]);
   return out;
 }
 

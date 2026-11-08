@@ -158,19 +158,21 @@ export async function editarEvento(app: Merviri, e: Registro<Evento> | null, dia
   const filaPrivado = h("label", { class: "casilla" }, privado,
     h("span", {}, `🔒 Ocupada sin detalles: ${pareja.personas[otra].nombre} solo verá «Ocupada» (para sorpresas)`));
 
+  const ayudaLibre = h("p", { class: "ayuda" }, "🌴 Esos días (o esas horas) no cuenta el horario habitual y «¿Qué hacemos?» los ve libres. Sirve también para festivos y tardes libres.");
   const actualizar = () => {
+    ayudaLibre.hidden = categorias.querySelector<HTMLInputElement>("input:checked")?.value !== "vacaciones";
     filaHoras.hidden = todoDia.checked;
     filaHasta.hidden = repeticion.value === "no";
     filaPrivado.hidden = quien.value !== yo;
   };
   inicio.addEventListener("change", () => { if (fin.value < inicio.value) fin.value = inicio.value; });
-  [todoDia, repeticion, quien].forEach((x) => x.addEventListener("change", actualizar));
+  [todoDia, repeticion, quien, categorias].forEach((x) => x.addEventListener("change", actualizar));
   actualizar();
 
   await dialogoFormulario(e ? "Editar" : "Nuevo en el calendario", [
     campo("Qué", h("input", { name: "titulo", value: base.titulo, required: true, maxlength: 120, autocomplete: "off" })),
     campo("De quién", quien),
-    h("fieldset", { class: "campo grupo" }, h("legend", { class: "grupo-titulo" }, "Tipo"), categorias),
+    h("fieldset", { class: "campo grupo" }, h("legend", { class: "grupo-titulo" }, "Tipo"), categorias, ayudaLibre),
     h("label", { class: "casilla" }, todoDia, h("span", {}, "Todo el día")),
     h("div", { class: "fila" }, campo("Empieza", inicio), campo("Acaba", fin)),
     filaHoras,
