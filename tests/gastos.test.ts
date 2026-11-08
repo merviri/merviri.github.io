@@ -1,4 +1,5 @@
 import {
+  boteParaSaldar,
   comoSaldar,
   dinero,
   exportarCsv,
@@ -8,7 +9,9 @@ import {
   partes,
   problemaGasto,
   resumen,
+  saldoEntreLasDos,
   saldos,
+  type Bote,
   type Gasto,
   type GastoFijo,
 } from "../src/dominio/gastos";
@@ -95,5 +98,41 @@ describe("exportar", () => {
   it("CSV con punto y coma y comas decimales", () => {
     const t = exportarCsv([g({ concepto: 'Cena "especial"' })], (id) => (id === "p1" ? "Elvira" : "María"), "EUR");
     expect(t).toContain("2026-11-07;Gasto;\"Cena \"\"especial\"\"\";Restaurantes;30,00;Elvira;Elvira 15,00, María 15,00;");
+  });
+});
+
+describe("balance entre las dos", () => {
+  const bote = (id: string, extra: Partial<Bote> = {}): Bote => ({ id, nombre: id, emoji: "💶", moneda: "EUR", amigos: [], archivado: false, ...extra });
+
+  it("suma todos los botes de las dos y deja aparte los de amigos", () => {
+    const casa = bote("casa");
+    const lisboa = bote("lisboa");
+    const amigos = bote("rural", { amigos: [{ id: "a-ana", nombre: "Ana" }] });
+    const s = saldoEntreLasDos([
+      { bote: casa, gastos: [g({ id: "1", importe: 2000, pagadoPor: "p2" })] }, // Elvira debe 10
+      { bote: lisboa, gastos: [g({ id: "2", importe: 30000, pagadoPor: "p1" })] }, // María debe 150
+      { bote: amigos, gastos: [g({ id: "3", importe: 9000, pagadoPor: "p1", reparto: { modo: "iguales", entre: { p1: 1, p2: 1, "a-ana": 1 } } })] },
+      { bote: bote("vacio"), gastos: [] },
+    ]);
+    expect(s).toEqual([{ moneda: "EUR", p1: 14000, porBote: [{ bote: "casa", p1: -1000 }, { bote: "lisboa", p1: 15000 }] }]);
+    // Saldar una vez en Casa deja a cero el balance de todo.
+    const pago = g({ id: "4", tipo: "transferencia", concepto: "Pago", importe: 14000, pagadoPor: "p2", reparto: { modo: "iguales", entre: { p1: 1 } } });
+    const despues = saldoEntreLasDos([
+      { bote: casa, gastos: [g({ id: "1", importe: 2000, pagadoPor: "p2" }), pago] },
+      { bote: lisboa, gastos: [g({ id: "2", importe: 30000, pagadoPor: "p1" })] },
+    ]);
+    expect(despues[0]!.p1).toBe(0);
+    expect(boteParaSaldar([casa, lisboa, amigos], s[0]!)).toBe("casa");
+  });
+
+  it("separa por moneda y salda en un bote de esa moneda", () => {
+    const casa = bote("casa");
+    const londres = bote("londres", { moneda: "GBP" });
+    const s = saldoEntreLasDos([
+      { bote: londres, gastos: [g({ importe: 5000, pagadoPor: "p2" })] },
+      { bote: casa, gastos: [g({ importe: 1000 })] },
+    ]);
+    expect(s.map((x) => [x.moneda, x.p1])).toEqual([["EUR", 500], ["GBP", -2500]]);
+    expect(boteParaSaldar([casa, londres], s[1]!)).toBe("londres");
   });
 });

@@ -9,7 +9,7 @@ import { texto } from "./comunes";
 import { eventosDeHoyYProximos, filaEvento } from "./calendario";
 import { dibujosSinVer } from "./dibujos";
 import { diaLargo } from "./evento";
-import { saldoCasa } from "./gastos";
+import { saldoComun } from "./gastos";
 import { platoDeHoy } from "./menu";
 import { haceUnAnio, tiraDeFotos } from "./album";
 import { listasOrdenadas } from "./listas";
@@ -33,7 +33,7 @@ export function vistaInicio(app: Merviri): HTMLElement {
   const paraHoy = [...grupos.atrasadas, ...grupos.hoy];
   const nuevos = dibujosSinVer(app);
   const cal = eventosDeHoyYProximos(app);
-  const casa = saldoCasa(app);
+  const casa = saldoComun(app);
   const menu = platoDeHoy(app);
   const recuerdos = haceUnAnio(app);
   const listas = listasOrdenadas(app)
@@ -135,9 +135,9 @@ export function vistaInicio(app: Merviri): HTMLElement {
         h("small", { class: "secundario" }, [menu.comida ? `Comida: ${menu.comida}` : "", menu.cena ? `Cena: ${menu.cena}` : ""].filter(Boolean).join(" · "))),
       h("span", { class: "flecha", "aria-hidden": "true" }, "›")) : null,
 
-    casa ? h("a", { class: "tarjeta-enlace arriba-mas", href: "#bote/casa" },
+    casa ? h("a", { class: "tarjeta-enlace arriba-mas", href: "#gastos" },
       h("span", { class: "emoji-grande", "aria-hidden": "true" }, "💶"),
-      h("span", { class: "crece" }, h("b", {}, "Gastos de casa"), h("small", { class: "secundario" }, casa.texto)),
+      h("span", { class: "crece" }, h("b", {}, "Gastos"), h("small", { class: "secundario" }, casa.texto)),
       h("span", { class: "flecha", "aria-hidden": "true" }, "›")) : null,
 
     ultimaDeOtra

@@ -195,6 +195,53 @@ export function comoSaldar(s: Record<string, number>): Pago[] {
   return pagos;
 }
 
+// ---------------------------------------------------------------------------
+// Balance entre las dos
+// ---------------------------------------------------------------------------
+
+/** Un bote es «solo de las dos» si no tiene amigos. */
+export const esDeLasDos = (b: Pick<Bote, "amigos">) => !b.amigos.length;
+
+export interface SaldoComun {
+  moneda: string;
+  /** Saldo de p1: positivo = p2 le debe a p1; negativo = p1 le debe a p2. */
+  p1: number;
+  /** Lo que aporta cada bote (solo los que no están a cero). */
+  porBote: { bote: string; p1: number }[];
+}
+
+/**
+ * Entre las dos hay un único balance: se suman todos los botes que son solo
+ * de las dos (Casa, viajes, planes…). Los botes son para ver cuánto ha costado
+ * cada cosa. Los botes con amigos llevan sus cuentas aparte, porque con ellos
+ * se salda bote a bote. Un balance por moneda (casi siempre, solo euros: lo
+ * pagado en otra moneda ya se pasa a la del bote al apuntarlo).
+ */
+export function saldoEntreLasDos(botes: { bote: Bote; gastos: Gasto[] }[]): SaldoComun[] {
+  const m = new Map<string, SaldoComun>();
+  for (const { bote, gastos } of botes) {
+    if (!esDeLasDos(bote) || !gastos.length) continue;
+    const c = m.get(bote.moneda) ?? { moneda: bote.moneda, p1: 0, porBote: [] };
+    const s = saldos(gastos, ["p1", "p2"]).p1 ?? 0;
+    c.p1 += s;
+    if (s) c.porBote.push({ bote: bote.id, p1: s });
+    m.set(bote.moneda, c);
+  }
+  return [...m.values()].sort((a, b) => (a.moneda === "EUR" ? -1 : b.moneda === "EUR" ? 1 : a.moneda.localeCompare(b.moneda)));
+}
+
+/**
+ * Dónde se apunta el pago que salda una moneda: en Casa si es de esa moneda;
+ * si no, en el bote de las dos de esa moneda que más pese en el saldo.
+ */
+export function boteParaSaldar(botes: Bote[], s: SaldoComun, casa = ID_CASA): string | null {
+  const c = botes.find((b) => b.id === casa);
+  if (c && c.moneda === s.moneda && esDeLasDos(c)) return c.id;
+  const candidatos = s.porBote.filter((x) => botes.some((b) => b.id === x.bote && b.moneda === s.moneda && esDeLasDos(b)))
+    .sort((a, b) => Math.abs(b.p1) - Math.abs(a.p1) || a.bote.localeCompare(b.bote));
+  return candidatos[0]?.bote ?? botes.find((b) => b.moneda === s.moneda && esDeLasDos(b))?.id ?? null;
+}
+
 /** Total por categoría (solo gastos, no transferencias) y por quién pagó. */
 export function resumen(gastos: Gasto[]) {
   const porCategoria = new Map<CategoriaGasto, number>();

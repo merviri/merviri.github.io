@@ -2,10 +2,12 @@ import type { Merviri } from "../../app/app";
 import { avisarGasto } from "../../app/eventos";
 import { fechaCorta, hoy } from "../../dominio/fechas";
 import {
+  boteParaSaldar,
   CATEGORIAS_GASTO,
   comoSaldar,
   dinero,
   emojiGasto,
+  esDeLasDos,
   exportarCsv,
   ID_CASA,
   leerImporte,
@@ -17,6 +19,7 @@ import {
   RUTA_BOTES,
   RUTA_FIJOS,
   rutaGastos,
+  saldoEntreLasDos,
   saldos,
   type Bote,
   type CategoriaGasto,
@@ -24,11 +27,13 @@ import {
   type GastoFijo,
   type ModoReparto,
   type Participante,
+  type SaldoComun,
 } from "../../dominio/gastos";
+import { otraPersona } from "../../dominio/pareja";
 import { tipoDeCambio } from "../../servicios/cambio";
 import type { Registro } from "../../sync/motor";
 import { nuevoId } from "../../util/bytes";
-import { campo, conBoton, confirmarPeligro, descargar, dialogoFormulario, h, tostada } from "../dom";
+import { campo, conBoton, confirmarPeligro, descargar, dialogo, dialogoFormulario, h, tostada } from "../dom";
 import { texto, volver } from "./comunes";
 
 type Pestana = "gastos" | "resumen" | "fijos";
@@ -72,6 +77,80 @@ function miTextoSaldo(c: number, moneda: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Balance entre las dos (uno solo, sume lo que sume cada bote)
+// ---------------------------------------------------------------------------
+
+const botesConGastos = (app: Merviri) => botes(app).map((b) => ({ bote: b, gastos: app.lista<Gasto>(rutaGastos(b.id)) }));
+
+/** Saldo común visto por mí: positivo = me deben. */
+const miSaldo = (app: Merviri, p1: number) => (app.persona === "p1" ? p1 : -p1);
+
+function textoComun(app: Merviri, p1: number, moneda: string): string {
+  const mio = miSaldo(app, p1);
+  const otra = app.pareja().personas[otraPersona(app.persona)].nombre;
+  if (Math.abs(mio) < 1) return "Estáis en paz ✨";
+  return mio > 0 ? `${otra} te debe ${dinero(mio, moneda)}` : `Le debes ${dinero(-mio, moneda)} a ${otra}`;
+}
+
+/** El balance entre las dos, por moneda (vacío si aún no hay gastos). */
+export function balanceComun(app: Merviri): SaldoComun[] {
+  return saldoEntreLasDos(botesConGastos(app));
+}
+
+async function saldarComun(app: Merviri, s: SaldoComun) {
+  const deudor = s.p1 > 0 ? "p2" : "p1";
+  const acreedor = otraPersona(deudor);
+  const importe = Math.abs(s.p1);
+  const ps = app.pareja().personas;
+  const pregunta = deudor === app.persona
+    ? `¿Apuntar que le has pagado ${dinero(importe, s.moneda)} a ${ps[acreedor].nombre}?`
+    : `¿Apuntar que ${ps[deudor].nombre} te ha pagado ${dinero(importe, s.moneda)}?`;
+  const r = await dialogo("Saldar", h("p", {}, `${pregunta} Quedaréis en paz.`), [
+    { texto: "Cancelar", valor: "no" },
+    { texto: "Sí, apuntar", valor: "si", tipo: "primario" },
+  ]);
+  if (r !== "si") return;
+  const todos = botes(app);
+  const b = todos.find((x) => x.id === boteParaSaldar(todos, s));
+  if (!b) throw new Error("No hay ningún bote donde apuntar el pago.");
+  await guardarMovimiento(app, b, {
+    id: nuevoId(), tipo: "transferencia", concepto: "Pago", importe, original: null, pagadoPor: deudor,
+    reparto: { modo: "iguales", entre: { [acreedor]: 1 } }, fecha: hoy(), categoria: "otros", nota: null, fijo: null,
+  }, null);
+  tostada("Apuntado: estáis en paz ✨");
+}
+
+/** El desglose sigue abierto aunque la pantalla se redibuje al sincronizar. */
+let desgloseAbierto = false;
+
+function tarjetaBalance(app: Merviri): HTMLElement | null {
+  const lista = saldoEntreLasDos(botesConGastos(app));
+  if (!lista.length) return null;
+  const porId = new Map(botes(app).map((b) => [b.id, b]));
+  return h("div", { class: "tarjeta tarjeta-morada balance-comun" },
+    h("small", { class: "etiqueta-pregunta" }, "Entre vosotras"),
+    lista.map((s) => {
+      const enPaz = Math.abs(s.p1) < 1;
+      const boton = h("button", { type: "button", class: "boton boton-primario boton-pequeno" }, "Saldar");
+      boton.addEventListener("click", () => void conBoton(boton, () => saldarComun(app, s)));
+      return h("div", { class: "linea-balance" },
+        h("div", { class: "cabecera-vista" }, h("p", { class: "texto-balance" }, textoComun(app, s.p1, s.moneda)), enPaz ? null : boton),
+        s.porBote.length > 1 && !enPaz
+          ? h("details", { class: "desglose", open: desgloseAbierto, ontoggle: (ev: Event) => { desgloseAbierto = (ev.currentTarget as HTMLDetailsElement).open; } },
+            h("summary", {}, "¿De dónde sale?"),
+            h("ul", { class: "lista" }, s.porBote.map((x) => {
+              const b = porId.get(x.bote);
+              const mio = miSaldo(app, x.p1);
+              return h("li", {},
+                h("span", { class: "crece" }, b ? `${b.emoji} ${b.nombre}` : "?"),
+                h("span", { class: mio > 0 ? "positivo" : "negativo" }, `${mio > 0 ? "+" : "−"}${dinero(Math.abs(mio), s.moneda)}`));
+            })))
+          : null);
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Lista de botes
 // ---------------------------------------------------------------------------
 
@@ -85,19 +164,23 @@ export function vistaGastos(app: Merviri): HTMLElement {
   const lista = botes(app).sort((a, b) => (a.id === ID_CASA ? -1 : b.id === ID_CASA ? 1 : a.nombre.localeCompare(b.nombre, "es")));
   const fila = (b: Registro<Bote>) => {
     const gs = app.lista<Gasto>(rutaGastos(b.id));
-    const s = saldos(gs, gente(app, b).map((p) => p.id));
     const total = resumen(gs).total;
+    // Los botes de las dos solo dicen lo gastado; los de amigos llevan su propio balance.
+    const sub = esDeLasDos(b)
+      ? `${dinero(total, b.moneda)} gastados`
+      : `Con ${b.amigos.map((a) => a.nombre).join(", ")} · ${miTextoSaldo(saldos(gs, gente(app, b).map((p) => p.id))[app.persona] ?? 0, b.moneda)} · ${dinero(total, b.moneda)} en total`;
     return h("li", {}, h("a", { class: "tarjeta-enlace", href: `#bote/${b.id}` },
       h("span", { class: "emoji-grande", "aria-hidden": "true" }, b.emoji),
       h("span", { class: "crece" }, h("b", {}, b.nombre),
-        h("small", { class: "secundario" }, `${miTextoSaldo(s[app.persona] ?? 0, b.moneda)} · ${dinero(total, b.moneda)} en total`)),
+        h("small", { class: "secundario" }, sub)),
       h("span", { class: "flecha", "aria-hidden": "true" }, "›")));
   };
   return h("section", {},
     h("div", { class: "cabecera-vista" },
       h("h1", {}, "Gastos"),
       h("button", { type: "button", class: "boton boton-primario", onclick: () => void editarBote(app, null) }, "+ Bote")),
-    h("p", { class: "secundario" }, "«Casa» es lo vuestro del día a día. Haced un bote para cada viaje o plan, también con amigos."),
+    tarjetaBalance(app),
+    h("p", { class: "secundario pequeno arriba" }, "Entre vosotras hay un único balance, sume lo que sume cada bote. Los botes sirven para ver cuánto os ha costado cada cosa: «Casa» para el día a día y uno por viaje o plan. Si vienen amigos, ese bote lleva sus propias cuentas."),
     h("ul", { class: "tarjetas-lista" }, lista.filter((b) => !b.archivado).map(fila)),
     lista.some((b) => b.archivado)
       ? h("details", { class: "hechos" }, h("summary", {}, "Archivados"), h("ul", { class: "tarjetas-lista" }, lista.filter((b) => b.archivado).map(fila)))
@@ -142,7 +225,7 @@ export function vistaBote(app: Merviri, id: string): HTMLElement {
     h("div", { class: "cabecera-vista" },
       h("h1", {}, `${b.emoji} ${b.nombre}`),
       h("button", { type: "button", class: "boton", onclick: () => void editarBote(app, b) }, "Editar")),
-    h("div", { class: "tarjeta" },
+    esDeLasDos(b) ? resumenBoteDeLasDos(app, b, ps, gs) : h("div", { class: "tarjeta" },
       h("ul", { class: "lista" }, ps.map((p) => h("li", {},
         h("span", { class: "crece" }, h("b", {}, p.nombre)),
         h("span", { class: (s[p.id] ?? 0) > 0 ? "positivo" : (s[p.id] ?? 0) < 0 ? "negativo" : "secundario" }, textoSaldo(s[p.id] ?? 0, b.moneda))))),
@@ -164,6 +247,18 @@ export function vistaBote(app: Merviri, id: string): HTMLElement {
       type: "button", role: "tab", "aria-selected": String(pestana === p), onclick: () => { pestana = p; app.refrescar(); },
     }, { gastos: "Movimientos", resumen: "Resumen", fijos: "Fijos" }[p]))),
     pestana === "gastos" ? listaMovimientos(app, b, ps, gs) : pestana === "resumen" ? vistaResumen(app, b, ps, gs) : vistaFijos(app, b, ps),
+  );
+}
+
+/** Bote solo de las dos: cuánto ha costado y quién ha pagado; el balance es el común. */
+function resumenBoteDeLasDos(app: Merviri, b: Bote, ps: Participante[], gs: Gasto[]): HTMLElement {
+  const r = resumen(gs);
+  const comun = balanceComun(app).find((s) => s.moneda === b.moneda);
+  return h("div", { class: "tarjeta" },
+    h("p", {}, "Gastado: ", h("b", {}, dinero(r.total, b.moneda))),
+    r.total ? h("p", { class: "secundario pequeno" }, "Pagó: ", ps.filter((p) => r.porQuien.get(p.id)).map((p) => `${p.nombre} ${dinero(r.porQuien.get(p.id)!, b.moneda)}`).join(" · ")) : null,
+    h("p", { class: "pequeno arriba" }, "Lo que os debéis va todo junto: ",
+      h("a", { href: "#gastos" }, comun ? textoComun(app, comun.p1, b.moneda) : "Estáis en paz ✨"), " ›"),
   );
 }
 
@@ -398,12 +493,9 @@ async function editarBote(app: Merviri, b: Registro<Bote> | null) {
   if (creado) location.hash = `#bote/${creado}`;
 }
 
-/** Para la portada: mi saldo en Casa. */
-export function saldoCasa(app: Merviri): { texto: string; signo: number } | null {
-  const b = app.uno<Bote>(RUTA_BOTES, ID_CASA);
-  if (!b) return null;
-  const gs = app.lista<Gasto>(rutaGastos(ID_CASA));
-  if (!gs.length) return null;
-  const c = saldos(gs, ["p1", "p2"])[app.persona] ?? 0;
-  return { texto: miTextoSaldo(c, b.moneda), signo: Math.sign(c) };
+/** Para la portada: el balance entre las dos (todos los botes de las dos juntos). */
+export function saldoComun(app: Merviri): { texto: string } | null {
+  const lista = balanceComun(app);
+  if (!lista.length) return null;
+  return { texto: lista.map((s) => textoComun(app, s.p1, s.moneda)).join(" · ") };
 }

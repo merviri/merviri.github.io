@@ -666,3 +666,13 @@ a.tarjeta.tarjeta-enlace { margin-bottom: 1rem; }
 a.ficha { text-decoration: none; color: inherit; }
 .elementos .elemento.en-fila { display: flex; align-items: center; gap: 0.5rem; }
 .elementos .en-fila .crece { flex: 1; min-width: 0; }
+
+/* Balance común entre las dos */
+.balance-comun { margin-top: 0.4rem; }
+.balance-comun .cabecera-vista { margin: 0.2rem 0 0; gap: 0.6rem; }
+.texto-balance { font-size: 1.25rem; font-weight: 900; margin: 0; }
+.linea-balance + .linea-balance { margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid rgb(83 74 183 / 20%); }
+.desglose { margin-top: 0.5rem; font-size: 0.9rem; }
+.desglose summary { cursor: pointer; font-weight: 700; }
+.desglose .lista { margin-top: 0.4rem; background: var(--superficie); border-radius: var(--radio-s); padding: 0.2rem 0.7rem; color: var(--texto); }
+.desglose .lista li { display: flex; gap: 0.5rem; padding: 0.3rem 0; }
