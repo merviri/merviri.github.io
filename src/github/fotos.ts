@@ -14,9 +14,13 @@ export interface RepoFotos {
   /** Sube un fichero (si ya existe, no hace nada). */
   subir(ruta: string, datos: Uint8Array<ArrayBuffer>): Promise<void>;
   bajar(ruta: string): Promise<Uint8Array<ArrayBuffer>>;
+  /** Rutas de todos los ficheros (para comprobar que no falta nada). */
+  listar(): Promise<Set<string>>;
   /** Rehace el repositorio sin los ficheros que cumplan `quitar`. Devuelve cuántos se quitaron. */
   vaciar(quitar: (ruta: string) => boolean): Promise<number>;
 }
+
+const esperar = (ms: number) => new Promise((ok) => setTimeout(ok, ms));
 
 const API = "https://api.github.com";
 
@@ -64,15 +68,28 @@ export class ClienteFotos implements RepoFotos {
   }
 
   subir(ruta: string, datos: Uint8Array<ArrayBuffer>): Promise<void> {
+    const cuerpo = JSON.stringify({ message: "Merviri: foto", content: aBase64(datos) });
     const hacer = async () => {
-      const res = await this.pedir(this.contenidos(ruta), {
-        method: "PUT",
-        headers: this.cab({ "Content-Type": "application/json" }),
-        // Sin «branch»: en un repositorio vacío, GitHub crea la rama principal con la primera foto.
-        body: JSON.stringify({ message: "Merviri: foto", content: aBase64(datos) }),
-      });
-      if (res.status === 422) return; // ya existe (subida repetida)
-      if (!res.ok) await this.fallo(res, "Subir una foto");
+      for (let intento = 0; ; intento++) {
+        const res = await this.pedir(this.contenidos(ruta), {
+          method: "PUT",
+          headers: this.cab({ "Content-Type": "application/json" }),
+          // Sin «branch»: en un repositorio vacío, GitHub crea la rama principal con la primera foto.
+          body: cuerpo,
+        });
+        if (res.ok) return;
+        if (res.status === 422) {
+          // «Falta el sha»: el fichero ya existe (subida repetida). Otro 422 es un error de verdad.
+          const msg = await res.clone().json().then((j: { message?: string }) => j.message ?? "", () => "");
+          if (/sha/i.test(msg)) return;
+        }
+        // Si la otra está subiendo a la vez, GitHub rechaza uno de los dos (409): se reintenta.
+        if ((res.status === 409 || res.status >= 500) && intento < 4) {
+          await esperar(800 * (intento + 1) + Math.random() * 700);
+          continue;
+        }
+        await this.fallo(res, "Subir una foto");
+      }
     };
     const sig = this.cola.then(hacer, hacer);
     this.cola = sig.catch(() => undefined);
@@ -85,16 +102,42 @@ export class ClienteFotos implements RepoFotos {
     return new Uint8Array(await res.arrayBuffer());
   }
 
-  async vaciar(quitar: (ruta: string) => boolean): Promise<number> {
+  /** Commit al que apunta la rama (null si el repositorio está vacío). */
+  private async cabeza(): Promise<string | null> {
     const ref = await this.pedir(this.url(`/git/ref/heads/${this.rama}`), { headers: this.cab() });
-    if (ref.status === 404 || ref.status === 409) return 0; // repositorio vacío
+    if (ref.status === 404 || ref.status === 409) return null; // repositorio vacío
     if (!ref.ok) await this.fallo(ref, "Leer el repositorio de fotos");
-    const commit = ((await ref.json()) as { object: { sha: string } }).object.sha;
+    return ((await ref.json()) as { object: { sha: string } }).object.sha;
+  }
+
+  private async arbol(commit: string) {
     const arbolRes = await this.pedir(this.url(`/git/trees/${commit}?recursive=1`), { headers: this.cab() });
     if (!arbolRes.ok) await this.fallo(arbolRes, "Listar las fotos");
     const arbol = (await arbolRes.json()) as { tree: { path: string; type: string; sha: string; mode: string }[]; truncated?: boolean };
-    if (arbol.truncated) throw new ErrorRemoto("El repositorio de fotos es demasiado grande para vaciarlo de una vez.");
-    const blobs = arbol.tree.filter((e) => e.type === "blob");
+    if (arbol.truncated) throw new ErrorRemoto("El repositorio de fotos es demasiado grande para leerlo de una vez.");
+    return arbol.tree.filter((e) => e.type === "blob");
+  }
+
+  async listar(): Promise<Set<string>> {
+    const commit = await this.cabeza();
+    return new Set(commit ? (await this.arbol(commit)).map((e) => e.path) : []);
+  }
+
+  async vaciar(quitar: (ruta: string) => boolean): Promise<number> {
+    // Si mientras se prepara alguien sube una foto, se vuelve a empezar: así
+    // no se pierde lo que se suba justo mientras se vacía la papelera.
+    for (let intento = 0; ; intento++) {
+      const hecho = await this.vaciarUnaVez(quitar);
+      if (hecho !== "movido") return hecho;
+      if (intento >= 5) throw new ErrorRemoto("Se están subiendo fotos ahora mismo: vaciad la papelera cuando terminen.");
+      await esperar(3000);
+    }
+  }
+
+  private async vaciarUnaVez(quitar: (ruta: string) => boolean): Promise<number | "movido"> {
+    const commit = await this.cabeza();
+    if (!commit) return 0;
+    const blobs = await this.arbol(commit);
     const quedan = blobs.filter((e) => !quitar(e.path));
     const quitados = blobs.length - quedan.length;
     if (!quitados) return 0;
@@ -119,6 +162,8 @@ export class ClienteFotos implements RepoFotos {
     });
     if (!nuevo.ok) await this.fallo(nuevo, "Vaciar la papelera");
     const sha = ((await nuevo.json()) as { sha: string }).sha;
+    // Justo antes de mover la rama: si ha cambiado, alguien acaba de subir algo.
+    if ((await this.cabeza()) !== commit) return "movido";
     const mover = await this.pedir(this.url(`/git/refs/heads/${this.rama}`), {
       method: "PATCH", headers: this.cab({ "Content-Type": "application/json" }), body: JSON.stringify({ sha, force: true }),
     });
@@ -139,6 +184,9 @@ export class FotosMemoria implements RepoFotos {
     const d = this.ficheros.get(ruta);
     if (!d) throw new ErrorRemoto(`No existe ${ruta}`, 404);
     return d;
+  }
+  async listar() {
+    return new Set(this.ficheros.keys());
   }
   async vaciar(quitar: (ruta: string) => boolean) {
     let n = 0;

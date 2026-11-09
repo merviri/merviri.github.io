@@ -710,3 +710,7 @@ a.ficha { text-decoration: none; color: inherit; }
 .resultados-lugar { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
 .acciones-seleccion { flex-wrap: nowrap; overflow-x: auto; }
 .acciones-seleccion .boton { flex: 0 0 auto; padding-inline: 0.65rem; white-space: nowrap; }
+
+/* Foto sin vista previa (formato que el navegador no sabe abrir) */
+.hueco-foto { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 0.2rem; font-size: 1.6rem; color: var(--texto-2); }
+.hueco-foto small { font-size: 0.65rem; font-weight: 700; }

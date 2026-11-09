@@ -1,6 +1,8 @@
 import { abrirBinario, cerrarBinario } from "../cifrado/binario";
 import type { ClaveDatos } from "../cifrado/sobre";
 import {
+  archivosDe,
+  baseDeArchivo,
   elegirRepo,
   fechaDeNombre,
   nombreDescarga,
@@ -14,9 +16,10 @@ import {
 } from "../dominio/album";
 import { hoy, type Fecha } from "../dominio/fechas";
 import { fechaExif } from "../fotos/exif";
-import { reducir } from "../fotos/imagen";
+import { reducidas } from "../fotos/imagen";
 import { crearZip } from "../fotos/zip";
 import type { RepoFotos } from "../github/fotos";
+import { ErrorRemoto } from "../github/errores";
 import type { Almacen } from "../local/almacen";
 import type { Registro } from "../sync/motor";
 import { nuevoId } from "../util/bytes";
@@ -38,9 +41,14 @@ export interface Progreso {
   sinFecha: string[];
 }
 
+const noEsta = (e: unknown) => e instanceof ErrorRemoto && e.status === 404;
+const UN_DIA = 24 * 3600 * 1000;
+
 export class ServicioAlbum {
   private repos = new Map<string, RepoFotos>();
   private urls = new Map<string, string>();
+  /** Fotos que ya se han intentado arreglar en esta sesión (para no repetir). */
+  private arregladas = new Map<string, Promise<Registro<Foto> | null>>();
   progreso: Progreso | null = null;
   cancelar = false;
 
@@ -85,12 +93,14 @@ export class ServicioAlbum {
     let bloqueo: WakeLockSentinel | null = null;
     try { bloqueo = await navigator.wakeLock?.request("screen"); } catch { /* no disponible */ }
     let subidas = 0;
+    const hechas = new Map<string, File>();
     try {
       for (const archivo of archivos) {
         if (this.cancelar) break;
         try {
           const r = await this.subirUna(archivo, album);
           if (r.sinFecha) this.progreso.sinFecha.push(r.id);
+          hechas.set(r.id, archivo);
           subidas++;
         } catch (e) {
           this.progreso.fallos.push(`${archivo.name}: ${(e as Error).message}`);
@@ -98,6 +108,9 @@ export class ServicioAlbum {
         this.progreso.hechas++;
         alAvanzar();
       }
+      // Comprobación final: que esté todo en GitHub (por si se cruzó con
+      // otra subida o con «vaciar la papelera» en el otro móvil).
+      if (hechas.size) await this.comprobarSubidas(hechas).catch(() => undefined);
     } finally {
       this.progreso.activa = false;
       await bloqueo?.release().catch(() => undefined);
@@ -126,12 +139,11 @@ export class ServicioAlbum {
     let ancho: number | null = null;
     let alto: number | null = null;
     try {
-      const m = await reducir(archivo, 480, 0.75);
-      const v = await reducir(archivo, 1600, 0.82);
-      mini = m.datos;
-      vista = v.datos;
-      ancho = m.anchoOriginal;
-      alto = m.altoOriginal;
+      const r = await reducidas(archivo);
+      mini = r.mini.datos;
+      vista = r.vista.datos;
+      ancho = r.ancho;
+      alto = r.alto;
     } catch {
       /* formato que el navegador no sabe abrir (p. ej. HEIC): solo se guarda el original */
     }
@@ -173,11 +185,22 @@ export class ServicioAlbum {
 
   /** URL (blob:) de una foto para un <img>. Las vistas grandes solo se guardan en memoria. */
   async url(f: Foto, t: "mini" | "vista"): Promise<string> {
+    // Sin miniatura (no se pudo hacer al subirla): se intenta hacer ahora desde el original.
+    if (f.sinVista) f = (await this.arreglar(f)) ?? f;
     const real: Tamano = f.sinVista ? "orig" : t;
     const k = `${f.id}:${real}`;
     const hecha = this.urls.get(k);
     if (hecha) return hecha;
-    const datos = await this.bytes(f, real);
+    let datos: Uint8Array<ArrayBuffer>;
+    try {
+      datos = await this.bytes(f, real);
+    } catch (e) {
+      // Falta en GitHub la miniatura o la vista: se rehacen desde el original.
+      if (!noEsta(e) || real === "orig") throw e;
+      const arreglada = await this.arreglar(f);
+      if (!arreglada) throw e;
+      datos = await this.bytes(arreglada, real);
+    }
     const url = URL.createObjectURL(new Blob([datos], { type: real === "orig" ? f.tipo : "image/jpeg" }));
     this.urls.set(k, url);
     // Para no llenar la memoria: como mucho 60 vistas grandes a la vez.
@@ -193,6 +216,110 @@ export class ServicioAlbum {
 
   async original(f: Foto): Promise<Blob> {
     return new Blob([await this.bytes(f, "orig")], { type: f.tipo });
+  }
+
+  /** Para descargar: el original o, si se perdió, la vista de 1600 px. */
+  async descarga(f: Foto): Promise<{ blob: Blob; reducida: boolean }> {
+    try {
+      return { blob: await this.original(f), reducida: false };
+    } catch (e) {
+      if (!noEsta(e) || f.sinVista) throw e;
+      if (!f.sinOriginal) await this.guardarFoto({ ...f, sinOriginal: true }).catch(() => undefined);
+      return { blob: new Blob([await this.bytes(f, "vista")], { type: "image/jpeg" }), reducida: true };
+    }
+  }
+
+  /**
+   * Rehace la miniatura y la vista desde el original y las sube. Devuelve la
+   * ficha nueva, o null si no se puede (el navegador no sabe leer ese formato
+   * o el original no está). Solo se intenta una vez por sesión.
+   */
+  arreglar(f: Foto): Promise<Registro<Foto> | null> {
+    let p = this.arregladas.get(f.id);
+    if (!p) {
+      p = (async () => {
+        try {
+          const orig = await this.original(f);
+          const r = await reducidas(orig);
+          const repo = this.repo(f.repo);
+          const conVista = { ...f, sinVista: false };
+          for (const [t, datos] of [["mini", r.mini.datos], ["vista", r.vista.datos]] as const) {
+            const cifrado = await cerrarBinario(this.clave, rutaArchivo(conVista, t), datos);
+            await repo.subir(rutaArchivo(conVista, t), cifrado);
+            if (t === "mini") await this.cache.set(`foto:${f.id}:mini`, cifrado).catch(() => undefined);
+          }
+          const actual = this.fotos().find((x) => x.id === f.id) ?? f;
+          const { actualizado: _a, por: _p, ...limpia } = actual as Registro<Foto>;
+          return await this.app.guardar<Foto>(rutaFotos(actual.fecha), {
+            ...limpia, sinVista: false, ancho: actual.ancho ?? r.ancho, alto: actual.alto ?? r.alto,
+          });
+        } catch {
+          return null;
+        }
+      })();
+      this.arregladas.set(f.id, p);
+    }
+    return p;
+  }
+
+  /** Tras subir: si falta algún fichero en GitHub, se vuelve a subir desde el archivo. */
+  private async comprobarSubidas(hechas: Map<string, File>) {
+    const fotos = this.fotos().filter((f) => hechas.has(f.id));
+    for (const repo of new Set(fotos.map((f) => f.repo))) {
+      const hay = await this.repo(repo).listar();
+      for (const f of fotos.filter((x) => x.repo === repo)) {
+        if (archivosDe(f).every((r) => hay.has(r))) continue;
+        const archivo = hechas.get(f.id)!;
+        const original = new Uint8Array(await archivo.arrayBuffer());
+        const r = this.repo(repo);
+        if (!hay.has(rutaArchivo(f, "orig"))) await r.subir(rutaArchivo(f, "orig"), await cerrarBinario(this.clave, rutaArchivo(f, "orig"), original));
+        if (!f.sinVista && (!hay.has(rutaArchivo(f, "mini")) || !hay.has(rutaArchivo(f, "vista")))) {
+          const red = await reducidas(archivo);
+          await r.subir(rutaArchivo(f, "mini"), await cerrarBinario(this.clave, rutaArchivo(f, "mini"), red.mini.datos));
+          await r.subir(rutaArchivo(f, "vista"), await cerrarBinario(this.clave, rutaArchivo(f, "vista"), red.vista.datos));
+        }
+      }
+    }
+  }
+
+  /**
+   * Revisión de fondo (como mucho una vez al día por dispositivo): marca las
+   * fotos cuyo original ya no está y rehace las miniaturas que falten.
+   */
+  async revisar(forzar = false): Promise<{ sinOriginal: number; arregladas: number }> {
+    const ultima = await this.cache.get<number>("album:revision").catch(() => undefined);
+    if (!forzar && ultima && Date.now() - ultima < UN_DIA) return { sinOriginal: 0, arregladas: 0 };
+    await this.cache.set("album:revision", Date.now()).catch(() => undefined);
+    const fotos = this.fotos().filter((f) => !f.papelera);
+    let sinOriginal = 0;
+    let arregladas = 0;
+    for (const repo of new Set(fotos.map((f) => f.repo))) {
+      const hay = await this.repo(repo).listar();
+      for (const f of fotos.filter((x) => x.repo === repo)) {
+        const falta = archivosDe(f).filter((r) => !hay.has(r));
+        if (!falta.length) {
+          if (f.sinOriginal) await this.guardarFoto({ ...f, sinOriginal: false });
+          continue;
+        }
+        if (falta.includes(rutaArchivo(f, "orig"))) {
+          if (!f.sinOriginal) { await this.guardarFoto({ ...f, sinOriginal: true }); sinOriginal++; }
+        } else if (await this.arreglar(f)) {
+          arregladas++;
+        }
+      }
+    }
+    return { sinOriginal, arregladas };
+  }
+
+  /** Vuelve a subir el original de una foto que lo perdió (desde la galería del móvil). */
+  async reponerOriginal(f: Foto, archivo: File): Promise<void> {
+    const original = new Uint8Array(await archivo.arrayBuffer());
+    await this.repo(f.repo).subir(rutaArchivo(f, "orig"), await cerrarBinario(this.clave, rutaArchivo(f, "orig"), original));
+    const actual = this.fotos().find((x) => x.id === f.id) ?? f;
+    const { actualizado: _a, por: _p, ...limpia } = actual as Registro<Foto>;
+    await this.app.guardar<Foto>(rutaFotos(actual.fecha), {
+      ...limpia, sinOriginal: false, tipo: archivo.type || actual.tipo, bytes: actual.bytes + original.length,
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -247,7 +374,7 @@ export class ServicioAlbum {
     const porRepo = new Map<string, Set<string>>();
     for (const f of tiradas) porRepo.set(f.repo, new Set([...(porRepo.get(f.repo) ?? []), f.base]));
     for (const [repo, bases] of porRepo) {
-      await this.repo(repo).vaciar((ruta) => bases.has(ruta.replace(/\.(mini|vista|orig)$/, "")));
+      await this.repo(repo).vaciar((ruta) => bases.has(baseDeArchivo(ruta)));
     }
     for (const f of tiradas) {
       await this.app.borrar(rutaFotos(f.fecha), f.id);
@@ -267,7 +394,9 @@ export class ServicioAlbum {
     const albumes = this.albumes();
     let i = 0;
     for (const f of fotos) {
-      archivos.push({ nombre: `${carpeta}/${nombreDescarga(f, albumes)}`, datos: await this.bytes(f, "orig"), fecha: new Date(`${f.fecha}T${f.hora ?? "12:00"}:00`) });
+      const d = await this.descarga(f);
+      const nombre = nombreDescarga(f, albumes).replace(/\.[a-z0-9]+$/i, (ext) => (d.reducida ? " (copia reducida).jpg" : ext));
+      archivos.push({ nombre: `${carpeta}/${nombre}`, datos: new Uint8Array(await d.blob.arrayBuffer()), fecha: new Date(`${f.fecha}T${f.hora ?? "12:00"}:00`) });
       alAvanzar(++i);
     }
     return crearZip(archivos);

@@ -97,8 +97,14 @@ function miniatura(app: Merviri, f: Foto, ids: string[]): HTMLElement {
     },
   }, img, f.favorita ? h("span", { class: "marca-favorita", "aria-label": "Favorita" }, "❤️") : null,
   sel ? h("span", { class: "marca-seleccion", "aria-hidden": "true" }, "✓") : null) as HTMLElement & { cargar?: () => void };
+  const sinVista = () => {
+    caja.classList.add("sin-vista");
+    img.remove();
+    caja.prepend(h("span", { class: "hueco-foto", title: "Sin vista previa: ábrela para descargarla" }, "🖼️", h("small", {}, "Sin vista previa")));
+  };
+  img.addEventListener("error", sinVista, { once: true });
   caja.cargar = () => {
-    app.album!.url(f, "mini").then((u) => { img.src = u; }, () => { caja.classList.add("rota"); img.alt = "No se pudo cargar"; });
+    app.album!.url(f, "mini").then((u) => { img.src = u; }, sinVista);
   };
   if (observador) observador.observe(caja);
   else caja.cargar();
@@ -242,9 +248,10 @@ async function elegirAlbumVarias(app: Merviri, fotos: Foto[]) {
 
 async function descargarUna(app: Merviri, f: Foto, boton: HTMLButtonElement) {
   await conBoton(boton, async () => {
-    const blob = await app.album!.original(f);
+    const { blob, reducida } = await app.album!.descarga(f);
+    if (reducida) tostada("El original de esta foto se perdió: te descargo la copia de 1600 px.", "error");
     const url = URL.createObjectURL(blob);
-    const a = h("a", { href: url, download: app.album!.nombreDescarga(f) });
+    const a = h("a", { href: url, download: reducida ? app.album!.nombreDescarga(f).replace(/\.[a-z0-9]+$/i, " (copia reducida).jpg") : app.album!.nombreDescarga(f) });
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -307,8 +314,17 @@ const botonZip = (app: Merviri, fotos: Foto[], nombre: string) => {
 // Pantalla principal
 // ---------------------------------------------------------------------------
 
+let revisado = false;
+
 export function vistaAlbum(app: Merviri, param = ""): HTMLElement {
   if (!app.album) return sinServicio();
+  if (!revisado) {
+    // Una vez por sesión (y como mucho una vez al día): ¿falta algo en GitHub?
+    revisado = true;
+    void app.album.revisar().then((r) => {
+      if (r.arregladas) tostada(`Arregladas ${r.arregladas === 1 ? "una miniatura" : `${r.arregladas} miniaturas`} ✨`);
+    }, () => undefined);
+  }
   if (param) return vistaUnAlbum(app, param);
   const fotos = app.album.fotos();
   const papelera = ordenar(fotos.filter((f) => f.papelera));
@@ -487,7 +503,15 @@ export function vistaFoto(app: Merviri, id: string): HTMLElement {
   const siguiente = i >= 0 && i < contexto.length - 1 ? contexto[i + 1] : null;
   const img = h("img", { class: "foto-grande", alt: `Foto del ${diaLargo(f.fecha)}` });
   const estado = h("p", { class: "secundario centro" }, "Cargando…");
+  const noSeVe = () => { img.remove(); estado.textContent = "Esta foto no se puede mostrar aquí (formato que el navegador no sabe abrir), pero sí descargarla."; };
+  img.addEventListener("error", noSeVe, { once: true });
   app.album.url(f, "vista").then((u) => { img.src = u; estado.remove(); }, (e: Error) => { estado.textContent = `No se pudo cargar: ${e.message}`; });
+  const reponer = h("input", { type: "file", accept: "image/*", hidden: true });
+  reponer.addEventListener("change", () => {
+    const archivo = reponer.files?.[0];
+    reponer.value = "";
+    if (archivo) void app.album!.reponerOriginal(f, archivo).then(() => tostada("Original subido ✨"), (e: Error) => tostada(e.message, "error"));
+  });
   const albumes = app.album.albumes().filter((a) => f.albumes.includes(a.id));
   const autor = esIdPersona(f.por) ? pareja.personas[f.por].nombre : null;
 
@@ -505,6 +529,10 @@ export function vistaFoto(app: Merviri, id: string): HTMLElement {
       autor ? h("small", { class: "secundario" }, ` · subida por ${autor}`) : null),
     albumes.length ? h("p", { class: "centro" }, albumes.map((a) => h("a", { class: "pastilla pastilla-morado", href: `#album/${a.id}` }, `${a.emoji} ${a.nombre}`))) : null,
     f.papelera ? h("p", { class: "aviso-reserva" }, "Está en la papelera.") : null,
+    f.sinOriginal ? h("div", { class: "tarjeta tarjeta-rosa" },
+      h("p", {}, h("b", {}, "Se perdió el original de esta foto. "),
+        "Queda esta copia de 1600 px. Si todavía la tienes en el móvil, súbela otra vez y quedará como estaba."),
+      h("button", { type: "button", class: "boton boton-pequeno", onclick: () => reponer.click() }, "Subir el original otra vez"), reponer) : null,
     h("div", { class: "botones centrados" },
       h("button", { type: "button", class: "boton", "aria-pressed": String(f.favorita), onclick: () => void app.album!.favorita(f) }, f.favorita ? "❤️ Favorita" : "🤍 Favorita"),
       h("button", { type: "button", class: "boton", onclick: () => void elegirAlbumes(app, f) }, "📁 Álbumes"),

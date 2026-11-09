@@ -58,6 +58,8 @@ const app = new Merviri(new AlmacenIdb(`merviri${sufijo}`), crearRemoto);
     }
     return new ClienteFotos(c.propietario, nombre, c.token);
   });
+  // Solo en desarrollo: para las pruebas en el navegador.
+  if (DEV) Object.assign(window, { __merviri: app, __fotosPrueba: falsos });
 }
 
 // El código de un enlace de vinculación se guarda en memoria y se quita de la barra de direcciones.

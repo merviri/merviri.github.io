@@ -36,7 +36,16 @@ export interface Foto {
   favorita: boolean;
   /** Cuándo se mandó a la papelera (null = no está). */
   papelera: string | null;
+  /** El original se perdió (solo queda la vista de 1600 px). */
+  sinOriginal?: boolean;
 }
+
+/** Ficheros que tiene que haber en el repositorio para una foto. */
+export const archivosDe = (f: Pick<Foto, "base" | "sinVista">): string[] =>
+  f.sinVista ? [`${f.base}.orig`] : [`${f.base}.mini`, `${f.base}.vista`, `${f.base}.orig`];
+
+/** Base de un fichero del repositorio («…/id.mini» → «…/id»). */
+export const baseDeArchivo = (ruta: string) => ruta.replace(/\.(mini|vista|orig)(\.\d+)?$/, "");
 
 export interface Album {
   id: string;
