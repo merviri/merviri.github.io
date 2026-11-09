@@ -6,6 +6,7 @@ import {
   emojiCategoria,
   esHora,
   LETRAS_DIA,
+  ordenarBloques,
   problemaBloque,
   problemaEvento,
   RUTA_HORARIOS,
@@ -242,8 +243,9 @@ export function editarHorario(app: Merviri, persona: IdPersona = app.persona) {
   const nombre = app.pareja().personas[persona].nombre;
   const lista = h("ul", { class: "lista" });
   const error = h("p", { class: "error", role: "alert" });
-  const actual = () => app.uno<Horario>(RUTA_HORARIOS, persona)?.bloques ?? [];
-  const guardar = (bloques: BloqueHorario[]) => app.guardar<Horario>(RUTA_HORARIOS, { id: persona, bloques });
+  // Siempre en orden (día de la semana y hora), aunque se apunte desordenado.
+  const actual = () => ordenarBloques(app.uno<Horario>(RUTA_HORARIOS, persona)?.bloques ?? []);
+  const guardar = (bloques: BloqueHorario[]) => app.guardar<Horario>(RUTA_HORARIOS, { id: persona, bloques: ordenarBloques(bloques) });
 
   const pintarLista = () => {
     const bloques = actual();

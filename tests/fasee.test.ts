@@ -152,3 +152,14 @@ describe("descubrir", () => {
     expect(Math.round(distanciaKm({ lat: 41.6523, lon: -4.7245 }, { lat: 40.9481, lon: -4.1184 }))).toBeGreaterThan(80); // Segovia
   });
 });
+
+describe("horario habitual", () => {
+  it("se guarda en orden: por día de la semana y por hora", async () => {
+    const { ordenarBloques } = await import("../src/dominio/calendario");
+    const b = (dias: number[], desde: string, hasta: string, etiqueta = "x") => ({ dias, desde, hasta, etiqueta });
+    expect(ordenarBloques([b([3], "16:00", "18:00", "Inglés"), b([1, 2, 3, 4, 5], "08:00", "15:00", "Trabajo"), b([6], "10:00", "11:00", "Yoga"), b([1, 3], "17:00", "18:00", "Gimnasio"), b([5, 1], "07:00", "08:00", "Correr")])
+      .map((x) => `${x.dias.join("")} ${x.desde} ${x.etiqueta}`)).toEqual([
+      "15 07:00 Correr", "12345 08:00 Trabajo", "13 17:00 Gimnasio", "3 16:00 Inglés", "6 10:00 Yoga",
+    ]);
+  });
+});

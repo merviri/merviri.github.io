@@ -240,6 +240,13 @@ export function problemaBloque(b: BloqueHorario): string | null {
   return null;
 }
 
+/** El horario en orden: por el primer día de la semana, luego por la hora de empezar. */
+export function ordenarBloques(bs: BloqueHorario[]): BloqueHorario[] {
+  const primero = (b: BloqueHorario) => (b.dias.length ? Math.min(...b.dias) : 8);
+  return [...bs].map((b) => ({ ...b, dias: [...b.dias].sort((x, y) => x - y) }))
+    .sort((a, b) => primero(a) - primero(b) || a.desde.localeCompare(b.desde) || a.hasta.localeCompare(b.hasta) || a.etiqueta.localeCompare(b.etiqueta, "es"));
+}
+
 export const bloquesDelDia = (h: Horario | undefined, f: Fecha) => (h?.bloques ?? []).filter((b) => b.dias.includes(diaSemana(f)));
 
 /** Rato (en minutos) que ocupa una ocurrencia de un evento en un día concreto. */

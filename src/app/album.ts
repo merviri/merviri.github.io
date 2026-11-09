@@ -2,7 +2,8 @@ import { abrirBinario, cerrarBinario } from "../cifrado/binario";
 import type { ClaveDatos } from "../cifrado/sobre";
 import {
   elegirRepo,
-  nombreEnZip,
+  fechaDeNombre,
+  nombreDescarga,
   PREFIJO_ALBUM,
   RUTA_ALBUMES,
   rutaArchivo,
@@ -11,7 +12,7 @@ import {
   type Foto,
   type Tamano,
 } from "../dominio/album";
-import { hoy } from "../dominio/fechas";
+import { hoy, type Fecha } from "../dominio/fechas";
 import { fechaExif } from "../fotos/exif";
 import { reducir } from "../fotos/imagen";
 import { crearZip } from "../fotos/zip";
@@ -33,6 +34,8 @@ export interface Progreso {
   hechas: number;
   fallos: string[];
   activa: boolean;
+  /** Fotos que no traían fecha (ni EXIF ni en el nombre): se pusieron con la de hoy. */
+  sinFecha: string[];
 }
 
 export class ServicioAlbum {
@@ -55,7 +58,14 @@ export class ServicioAlbum {
   }
 
   fotos(): Registro<Foto>[] {
-    return (this.app.motor?.rutasCon(PREFIJO_ALBUM) ?? []).filter((r) => r !== RUTA_ALBUMES).flatMap((r) => this.app.lista<Foto>(r));
+    const todas = (this.app.motor?.rutasCon(PREFIJO_ALBUM) ?? []).filter((r) => r !== RUTA_ALBUMES).flatMap((r) => this.app.lista<Foto>(r));
+    // Al cambiar una foto de año puede estar un momento en los dos ficheros: vale la más reciente.
+    const porId = new Map<string, Registro<Foto>>();
+    for (const f of todas) {
+      const otra = porId.get(f.id);
+      if (!otra || f.actualizado > otra.actualizado) porId.set(f.id, f);
+    }
+    return [...porId.values()];
   }
 
   albumes(): Registro<Album>[] {
@@ -69,7 +79,7 @@ export class ServicioAlbum {
   async subir(archivos: File[], album: string | null, alAvanzar: () => void = () => {}): Promise<number> {
     if (this.progreso?.activa) throw new Error("Ya se están subiendo fotos.");
     this.cancelar = false;
-    this.progreso = { total: archivos.length, hechas: 0, fallos: [], activa: true };
+    this.progreso = { total: archivos.length, hechas: 0, fallos: [], activa: true, sinFecha: [] };
     alAvanzar();
     // Que no se apague la pantalla mientras sube.
     let bloqueo: WakeLockSentinel | null = null;
@@ -79,7 +89,8 @@ export class ServicioAlbum {
       for (const archivo of archivos) {
         if (this.cancelar) break;
         try {
-          await this.subirUna(archivo, album);
+          const r = await this.subirUna(archivo, album);
+          if (r.sinFecha) this.progreso.sinFecha.push(r.id);
           subidas++;
         } catch (e) {
           this.progreso.fallos.push(`${archivo.name}: ${(e as Error).message}`);
@@ -99,13 +110,17 @@ export class ServicioAlbum {
     return subidas;
   }
 
-  private async subirUna(archivo: File, album: string | null) {
+  private async subirUna(archivo: File, album: string | null): Promise<{ id: string; sinFecha: boolean }> {
     if (!archivo.type.startsWith("image/") && !/\.(heic|heif|jpe?g|png|webp)$/i.test(archivo.name)) throw new Error("No es una foto.");
     const original = new Uint8Array(await archivo.arrayBuffer());
+    // La fecha: la de la cámara (EXIF); si no, la del nombre (WhatsApp, capturas…);
+    // si no, la del archivo (que en el móvil suele ser la de hoy).
     const exif = fechaExif(original);
+    const deNombre = exif ? null : fechaDeNombre(archivo.name, hoy());
     const ahora = new Date(archivo.lastModified || Date.now());
-    const fecha = exif?.fecha ?? hoy(ahora);
-    const hora = exif?.hora ?? new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(ahora);
+    const fecha = exif?.fecha ?? deNombre?.fecha ?? hoy(ahora);
+    const hora = exif?.hora ?? (deNombre ? deNombre.hora : new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(ahora));
+    const sinFecha = !exif && !deNombre && fecha === hoy();
     let mini: Uint8Array<ArrayBuffer> | null = null;
     let vista: Uint8Array<ArrayBuffer> | null = null;
     let ancho: number | null = null;
@@ -137,6 +152,7 @@ export class ServicioAlbum {
     }
     await r.subir(rutaArchivo(foto, "orig"), await cerrarBinario(this.clave, rutaArchivo(foto, "orig"), original));
     await this.app.guardar<Foto>(rutaFotos(fecha), foto);
+    return { id, sinFecha };
   }
 
   // -------------------------------------------------------------------------
@@ -205,6 +221,24 @@ export class ServicioAlbum {
   }
 
   /**
+   * Cambia el día de unas fotos (p. ej., las que os mandan tarde). La hora se
+   * mantiene para que sigan en el mismo orden. Si cambian de año, la ficha
+   * pasa al fichero de ese año (los archivos cifrados no se mueven).
+   */
+  async cambiarFecha(fotos: Foto[], fecha: Fecha): Promise<number> {
+    let n = 0;
+    for (const f of fotos) {
+      const actual = this.fotos().find((x) => x.id === f.id) ?? f;
+      if (actual.fecha === fecha) continue;
+      const { actualizado: _a, por: _p, ...limpia } = actual as Registro<Foto>;
+      await this.app.guardar<Foto>(rutaFotos(fecha), { ...limpia, fecha });
+      if (rutaFotos(actual.fecha) !== rutaFotos(fecha)) await this.app.borrar(rutaFotos(actual.fecha), actual.id);
+      n++;
+    }
+    return n;
+  }
+
+  /**
    * Vacía la papelera: rehace cada repositorio de fotos sin esas fotos (y sin
    * historial) y quita sus fichas. Devuelve los bytes liberados.
    */
@@ -222,12 +256,18 @@ export class ServicioAlbum {
     return tiradas.reduce((n, f) => n + f.bytes, 0);
   }
 
+  /** Nombre con el que se descarga una foto (fecha y, si está en alguno, álbum). */
+  nombreDescarga(f: Foto): string {
+    return nombreDescarga(f, this.albumes());
+  }
+
   /** ZIP con los originales (para guardarlos en el ordenador). */
   async zip(fotos: Foto[], carpeta: string, alAvanzar: (hechas: number) => void = () => {}): Promise<Blob> {
     const archivos = [];
+    const albumes = this.albumes();
     let i = 0;
     for (const f of fotos) {
-      archivos.push({ nombre: `${carpeta}/${nombreEnZip(f)}`, datos: await this.bytes(f, "orig"), fecha: new Date(`${f.fecha}T${f.hora ?? "12:00"}:00`) });
+      archivos.push({ nombre: `${carpeta}/${nombreDescarga(f, albumes)}`, datos: await this.bytes(f, "orig"), fecha: new Date(`${f.fecha}T${f.hora ?? "12:00"}:00`) });
       alAvanzar(++i);
     }
     return crearZip(archivos);

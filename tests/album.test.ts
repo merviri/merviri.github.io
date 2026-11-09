@@ -3,7 +3,7 @@ import { ServicioAlbum } from "../src/app/album";
 import { importarClaveDatos } from "../src/cifrado/aes";
 import { abrirBinario, cerrarBinario } from "../src/cifrado/binario";
 import { ErrorDescifrado } from "../src/cifrado/errores";
-import { deAlbum, elegirRepo, LIMITE_REPO, nombreEnZip, porMes, rutaArchivo, rutaFotos, type Foto } from "../src/dominio/album";
+import { deAlbum, elegirRepo, fechaDeNombre, LIMITE_REPO, nombreDescarga, nombreEnZip, porMes, rutaArchivo, rutaFotos, type Foto } from "../src/dominio/album";
 import { fechaExif } from "../src/fotos/exif";
 import { crc32, crearZip } from "../src/fotos/zip";
 import { FotosMemoria } from "../src/github/fotos";
@@ -88,5 +88,57 @@ describe("álbum", () => {
     expect(await s.vaciarPapelera()).toBe(1000);
     expect([...repo.ficheros.keys()].sort()).toEqual(["fotos/2026/11/si.mini", "fotos/2026/11/si.orig", "fotos/2026/11/si.vista"]);
     expect(s.fotos().map((f) => f.id)).toEqual(["si"]);
+  });
+});
+
+describe("fotos: fechas y nombres", () => {
+  it("saca la fecha del nombre del archivo cuando no hay EXIF", () => {
+    const hoyF = "2026-11-09";
+    expect(fechaDeNombre("IMG_20260415_183012.jpg", hoyF)).toEqual({ fecha: "2026-04-15", hora: "18:30" });
+    expect(fechaDeNombre("IMG-20260415-WA0012.jpg", hoyF)).toEqual({ fecha: "2026-04-15", hora: null });
+    expect(fechaDeNombre("WhatsApp Image 2026-04-15 at 18.30.12.jpeg", hoyF)).toEqual({ fecha: "2026-04-15", hora: "18:30" });
+    expect(fechaDeNombre("Screenshot_20260415-183012.png", hoyF)).toEqual({ fecha: "2026-04-15", hora: "18:30" });
+    expect(fechaDeNombre("20260415_183012.jpg", hoyF)).toEqual({ fecha: "2026-04-15", hora: "18:30" });
+    expect(fechaDeNombre("PXL_20260415_163012345.jpg", hoyF)?.fecha).toBe("2026-04-15");
+    // Sin fecha, imposible o del futuro: nada.
+    expect(fechaDeNombre("1000012345.jpg", hoyF)).toBeNull();
+    expect(fechaDeNombre("IMG_20260231_120000.jpg", hoyF)).toBeNull();
+    expect(fechaDeNombre("IMG_20270101_120000.jpg", hoyF)).toBeNull();
+  });
+
+  it("lee el EXIF también dentro de un HEIC (o WebP)", () => {
+    const jpeg = jpegConExif("2026:04:15 18:30:12");
+    // El bloque «Exif\0\0» + TIFF metido en un contenedor que no es JPEG.
+    const heic = new Uint8Array([0, 0, 0, 24, ...utf8("ftypheic"), 0, 0, 0, 0, ...utf8("mif1heic"), ...jpeg.slice(6, -2)]);
+    expect(fechaExif(heic)).toEqual({ fecha: "2026-04-15", hora: "18:30" });
+  });
+
+  it("descarga con la fecha y el álbum en el nombre", () => {
+    const albumes = [{ id: "lis", nombre: "Escapada a Lisboa" }, { id: "x", nombre: "Raro: a/b*c" }];
+    expect(nombreDescarga(foto({ id: "abcdefgh", albumes: ["lis"] }), albumes)).toBe("2026-11-07 18.30 - Escapada a Lisboa (abcdef).jpg");
+    expect(nombreDescarga(foto({ id: "abcdefgh", albumes: ["x"] }), albumes)).toBe("2026-11-07 18.30 - Raro a b c (abcdef).jpg");
+    expect(nombreDescarga(foto({ id: "abcdefgh", hora: null, nombre: "IMG.HEIC", tipo: "image/heic" }))).toBe("2026-11-07 (abcdef).heic");
+  });
+
+  it("cambiar la fecha mueve la ficha de año si hace falta", async () => {
+    const datos: Record<string, Record<string, Foto & { borrado?: boolean; actualizado: string }>> = {};
+    let reloj = 0;
+    const app = {
+      motor: { rutasCon: () => Object.keys(datos) },
+      lista: (r: string) => Object.values(datos[r] ?? {}).filter((x) => !x.borrado),
+      guardar: async (r: string, f: Foto) => { (datos[r] ??= {})[f.id] = { ...f, actualizado: String(++reloj).padStart(4, "0") }; },
+      borrar: async (r: string, id: string) => { datos[r]![id]!.borrado = true; },
+    } as unknown as Merviri;
+    const s = new ServicioAlbum(app, () => new FotosMemoria("fotos-1"), { clave: await importarClaveDatos(aleatorios(32)), idClave: "id" }, new AlmacenMemoria());
+    await app.guardar(rutaFotos("2026-11-09"), foto({ id: "a", fecha: "2026-11-09" }));
+    await app.guardar(rutaFotos("2026-11-09"), foto({ id: "b", fecha: "2026-11-09" }));
+    expect(await s.cambiarFecha(s.fotos().filter((f) => f.id === "a"), "2026-04-15")).toBe(1);
+    expect(s.fotos().find((f) => f.id === "a")?.fecha).toBe("2026-04-15");
+    expect(await s.cambiarFecha(s.fotos().filter((f) => f.id === "b"), "2025-12-31")).toBe(1);
+    expect(datos[rutaFotos("2025-12-31")]?.b?.fecha).toBe("2025-12-31");
+    expect(datos[rutaFotos("2026-01-01")]?.b?.borrado).toBe(true);
+    expect(s.fotos().map((f) => `${f.id}:${f.fecha}`).sort()).toEqual(["a:2026-04-15", "b:2025-12-31"]);
+    // El mismo día: no hace nada.
+    expect(await s.cambiarFecha(s.fotos().filter((f) => f.id === "a"), "2026-04-15")).toBe(0);
   });
 });

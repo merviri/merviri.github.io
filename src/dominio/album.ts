@@ -1,4 +1,5 @@
 import type { Fecha } from "./fechas";
+import type { Lugar } from "./planes";
 
 /**
  * Álbum compartido.
@@ -43,6 +44,8 @@ export interface Album {
   emoji: string;
   /** Si es el álbum de un plan. */
   plan: string | null;
+  /** Dónde fue (para el mapa). Los álbumes antiguos no lo tienen. */
+  lugar?: Lugar | null;
 }
 
 export const albumDePlan = (plan: string) => `plan-${plan}`;
@@ -88,8 +91,38 @@ export function extension(f: Pick<Foto, "tipo" | "nombre">): string {
   return "jpg";
 }
 
-/** Nombre dentro del ZIP: «2026-11-07 18.30 (abc123).jpg». */
-export const nombreEnZip = (f: Foto) => `${f.fecha}${f.hora ? ` ${f.hora.replace(":", ".")}` : ""} (${f.id.slice(0, 6)}).${extension(f)}`;
+/** Quita lo que no vale en un nombre de archivo (Windows, Android, Mac). */
+export const limpiarNombre = (t: string) => t.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+
+/**
+ * Nombre al descargar (sola o en ZIP): «2026-04-15 18.30 - Lisboa (abc123).jpg».
+ * Con el álbum (o álbumes) si está en alguno.
+ */
+export function nombreDescarga(f: Foto, albumes: Pick<Album, "id" | "nombre">[] = []): string {
+  const nombres = albumes.filter((a) => f.albumes.includes(a.id)).map((a) => limpiarNombre(a.nombre)).filter(Boolean);
+  const album = nombres.length ? ` - ${nombres.join(", ").slice(0, 80)}` : "";
+  return `${f.fecha}${f.hora ? ` ${f.hora.replace(":", ".")}` : ""}${album} (${f.id.slice(0, 6)}).${extension(f)}`;
+}
+
+/** @deprecated: usa nombreDescarga. */
+export const nombreEnZip = (f: Foto) => nombreDescarga(f);
+
+/**
+ * Fecha (y hora, si viene) por el nombre del archivo, para las fotos sin EXIF:
+ * «IMG_20260415_183012.jpg», «IMG-20260415-WA0012.jpg» (WhatsApp),
+ * «WhatsApp Image 2026-04-15 at 18.30.12.jpeg», «Screenshot_20260415-183012.png»,
+ * «PXL_20260415_163012345.jpg», «20260415_183012.jpg»…
+ */
+export function fechaDeNombre(nombre: string, hoyF: Fecha): { fecha: Fecha; hora: string | null } | null {
+  const re = /(?<!\d)(20\d{2})[-_.]?(0[1-9]|1[0-2])[-_.]?(0[1-9]|[12]\d|3[01])(?!\d)(?:(?:[ _\-T]|\sat\s)([01]\d|2[0-3])[-_.:h ]?([0-5]\d))?/;
+  const m = re.exec(nombre);
+  if (!m) return null;
+  const fecha = `${m[1]}-${m[2]}-${m[3]}`;
+  // Fechas imposibles o del futuro: no es una fecha.
+  const d = new Date(`${fecha}T12:00:00Z`);
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== fecha || fecha > hoyF) return null;
+  return { fecha, hora: m[4] && m[5] ? `${m[4]}:${m[5]}` : null };
+}
 
 export function formatoBytes(n: number): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(1).replace(".", ",")} GB`;

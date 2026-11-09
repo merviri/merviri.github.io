@@ -16,6 +16,7 @@ export function vistaMas(app: Merviri): HTMLElement {
     h("div", { class: "cuadricula" },
       casilla("#nosotras", "💞", "Nosotras", nosotras ? `${nosotras} para ti` : undefined),
       casilla("#album", "📷", "Álbum"),
+      casilla("#mapa", "🗺️", "Mapa"),
       casilla("#gastos", "💶", "Gastos"),
       casilla("#menu", "🍝", "Menú"),
       casilla("#recetas", "📖", "Recetas"),

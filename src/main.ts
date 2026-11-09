@@ -7,6 +7,8 @@ import { ClienteFotos, FotosMemoria } from "./github/fotos";
 import { AlmacenIdb } from "./local/almacen";
 import { hoy } from "./dominio/fechas";
 import { esMia, RUTA_TAREAS, type Tarea } from "./dominio/tareas";
+import { RUTA_DISPOSITIVOS } from "./dominio/dispositivos";
+import { RUTA_PLAN } from "./dominio/avisos";
 import { bloquearRedibujo, redibujoBloqueado } from "./ui/bloqueo";
 import { dialogo, h, icono, tostada } from "./ui/dom";
 import { vistaAjustes } from "./ui/vistas/ajustes";
@@ -16,6 +18,7 @@ import { vistaDescubrir } from "./ui/vistas/descubrir";
 import { vistaBote, vistaGastos } from "./ui/vistas/gastos";
 import { vistaAlbum, vistaFoto } from "./ui/vistas/album";
 import { vistaCompartido } from "./ui/vistas/compartido";
+import { vistaMapa } from "./ui/vistas/mapa";
 import { vistaMas } from "./ui/vistas/mas";
 import { actualizarFestivosLocales } from "./servicios/festivos";
 import { pendientesNosotras, vistaCapsulas, vistaDecidir, vistaDeseos, vistaFicha, vistaNosotras, vistaNuestroAnio, vistaPreguntas, vistaVotacion } from "./ui/vistas/juntas";
@@ -72,6 +75,7 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
   album: (a, p) => vistaAlbum(a, p),
   foto: (a, p) => vistaFoto(a, p),
   compartido: (a) => vistaCompartido(a),
+  mapa: (a, p) => vistaMapa(a, p),
   nosotras: (a) => vistaNosotras(a),
   pregunta: (a) => vistaPreguntas(a),
   decidir: (a) => vistaDecidir(a),
@@ -100,7 +104,7 @@ const VISTAS: Record<string, (a: Merviri, param: string) => HTMLElement> = {
 };
 /** Pestaña de la barra inferior a la que pertenece cada ruta. */
 const PESTANA: Record<string, string> = {
-  lista: "listas", plan: "planes", gastos: "mas", bote: "mas", menu: "mas", recetas: "mas", receta: "mas", album: "mas", foto: "mas", nosotras: "mas", pregunta: "mas", decidir: "mas", votacion: "mas", capsulas: "mas", ficha: "mas", deseos: "mas", "nuestro-ano": "mas", descubrir: "planes", "que-hacemos": "planes", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
+  lista: "listas", plan: "planes", gastos: "mas", bote: "mas", menu: "mas", recetas: "mas", receta: "mas", album: "mas", foto: "mas", mapa: "mas", nosotras: "mas", pregunta: "mas", decidir: "mas", votacion: "mas", capsulas: "mas", ficha: "mas", deseos: "mas", "nuestro-ano": "mas", descubrir: "planes", "que-hacemos": "planes", notas: "mas", nota: "mas", dibujos: "mas", dibujar: "mas", dibujo: "mas", ajustes: "mas", "vincular-otro": "mas", token: "mas",
 };
 
 function ruta(): { nombre: string; param: string } {
@@ -108,7 +112,7 @@ function ruta(): { nombre: string; param: string } {
   const param = resto.join("/");
   if (!(nombre in VISTAS)) return { nombre: "inicio", param: "" };
   if (["lista", "nota", "dibujo", "plan", "bote", "receta", "foto", "votacion"].includes(nombre) && !/^[A-Za-z0-9_-]{1,40}$/.test(param)) return { nombre: "inicio", param: "" };
-  if (nombre === "album" && param && !/^[A-Za-z0-9_-]{1,60}$/.test(param)) return { nombre, param: "" };
+  if ((nombre === "album" || nombre === "mapa") && param && !/^[A-Za-z0-9_-]{1,60}$/.test(param)) return { nombre, param: "" };
   if ((nombre === "ficha" || nombre === "deseos") && !esIdPersona(param)) return { nombre: "nosotras", param: "" };
   if (nombre === "nuestro-ano" && param && !/^\d{4}$/.test(param)) return { nombre, param: "" };
   if (nombre === "calendario" && param && !/^\d{4}-\d{2}-\d{2}$/.test(param)) return { nombre, param: "" };
@@ -260,19 +264,62 @@ function pintar(deFondo = false) {
   if (!["dibujar", "dibujo"].includes(nombre)) avisarDibujoNuevo(app);
 }
 
-app.alCambiar((motivo) => pintar(motivo !== "fase" && motivo !== "manual"));
+/** Lo que cambia solo a menudo y no merece redibujar la pantalla (sí la cabecera). */
+const SILENCIOSAS = new Set(["__estado__", RUTA_DISPOSITIVOS, RUTA_PLAN]);
+/**
+ * Has escrito algo en la pantalla que aún no se ha guardado: lo que llegue de
+ * la otra espera hasta que guardes o cambies de pantalla (así no se pierde).
+ */
+let ocupada = false;
+principal.addEventListener("input", (ev) => { if (escribiendoEn(ev.target as Element)) ocupada = true; });
+
+function pintarCabecera() {
+  pintarEstado();
+  pintarAvisos();
+  pintarNavegacion();
+}
+
+app.alCambiar((motivo) => {
+  if (motivo === "fase" || motivo === "manual" || motivo === "token") {
+    if (motivo === "manual") ocupada = false;
+    pintar(false);
+    return;
+  }
+  const i = motivo.indexOf(":");
+  const origen = motivo.slice(0, i);
+  const rutas = motivo.slice(i + 1).split(",").filter(Boolean);
+  if (origen === "estado" || rutas.every((r) => SILENCIOSAS.has(r))) {
+    if (app.fase === "lista") pintarCabecera();
+    return;
+  }
+  // Lo que acabas de hacer tú se ve al momento (y ya está guardado).
+  if (origen === "local") {
+    ocupada = false;
+    pintar(true);
+    return;
+  }
+  // Lo que llega de fuera no pisa lo que estás escribiendo.
+  if (ocupada) {
+    pendiente = true;
+    pintarCabecera();
+    return;
+  }
+  pintar(true);
+});
 window.addEventListener("hashchange", () => {
   pendiente = false;
+  ocupada = false;
   bloquearRedibujo(null);
   if (app.fase === "lista") {
     pintar();
     window.scrollTo(0, 0);
   }
 });
-document.addEventListener("focusout", () => setTimeout(() => { if (pendiente) pintar(true); }, 0));
-document.addEventListener("close", () => setTimeout(() => { if (pendiente) pintar(true); }, 0), true);
+document.addEventListener("focusout", () => setTimeout(() => { if (pendiente && !ocupada) pintar(true); }, 0));
+document.addEventListener("close", () => setTimeout(() => { if (pendiente && !ocupada) pintar(true); }, 0), true);
 
-// Sincronizar: al abrir, al volver a la app, al recuperar la red y cada 20 s con la app a la vista.
+// Sincronizar: al abrir, al volver a la app, al recuperar la red y cada minuto con la app a la vista
+// (lo que haces tú se sube enseguida; esto es para ver lo de la otra).
 let ultimaVersion = 0;
 async function revisarVersion() {
   if (DEV || Date.now() - ultimaVersion < 10 * 60 * 1000) return;
@@ -301,9 +348,17 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("online", () => { if (app.fase === "lista") void app.sincronizar(); });
 setInterval(() => {
   if (document.visibilityState === "visible" && app.fase === "lista") void app.sincronizar();
-}, 20_000);
-// El reloj de «hace X min» y los avisos de fecha se refrescan cada minuto.
-setInterval(() => { if (app.fase === "lista") pintar(true); }, 60_000);
+}, 60_000);
+// Cada minuto: la cabecera (avisos de caducidad, insignias); la pantalla solo si cambia el día.
+let diaPintado = hoy();
+setInterval(() => {
+  if (app.fase !== "lista") return;
+  pintarCabecera();
+  if (hoy() !== diaPintado) {
+    diaPintado = hoy();
+    pintar(true);
+  }
+}, 60_000);
 
 pintar();
 void app.arrancar().catch((e: unknown) => {

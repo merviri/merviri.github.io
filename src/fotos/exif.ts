@@ -1,10 +1,31 @@
 /**
- * Fecha en que se hizo una foto JPEG (EXIF DateTimeOriginal), sin librerías.
+ * Fecha en que se hizo una foto (EXIF DateTimeOriginal), sin librerías.
+ * JPEG por sus marcas; HEIC, WebP y PNG buscando el bloque EXIF dentro.
  * Devuelve «AAAA-MM-DD» y «HH:MM», o null si no la tiene.
  */
 export function fechaExif(datos: Uint8Array): { fecha: string; hora: string } | null {
   const v = new DataView(datos.buffer, datos.byteOffset, datos.byteLength);
-  if (v.byteLength < 4 || v.getUint16(0) !== 0xffd8) return null; // no es JPEG
+  if (v.byteLength < 4) return null;
+  if (v.getUint16(0) === 0xffd8) return fechaJpeg(v) ?? buscarExif(datos, v);
+  return buscarExif(datos, v);
+}
+
+/** HEIC/WebP («Exif\0\0» + TIFF) y PNG (bloque «eXIf» con el TIFF dentro), en los primeros 2 MB. */
+function buscarExif(datos: Uint8Array, v: DataView): { fecha: string; hora: string } | null {
+  const fin = Math.min(datos.length, 2_000_000);
+  let intentos = 0;
+  for (let i = 0; i + 10 < fin && intentos < 8; i++) {
+    const exif = datos[i] === 0x45 && datos[i + 1] === 0x78 && datos[i + 2] === 0x69 && datos[i + 3] === 0x66 && datos[i + 4] === 0 && datos[i + 5] === 0;
+    const png = datos[i] === 0x65 && datos[i + 1] === 0x58 && datos[i + 2] === 0x49 && datos[i + 3] === 0x66;
+    if (!exif && !png) continue;
+    intentos++;
+    const r = leerTiff(v, i + (exif ? 6 : 4), v.byteLength);
+    if (r) return r;
+  }
+  return null;
+}
+
+function fechaJpeg(v: DataView): { fecha: string; hora: string } | null {
   let p = 2;
   while (p + 4 <= v.byteLength) {
     const marca = v.getUint16(p);

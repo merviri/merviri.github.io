@@ -27,6 +27,9 @@ export interface Meta {
   por: string;
   borrado?: true;
 }
+/** De dónde viene un cambio: lo ha hecho este dispositivo, ha llegado de fuera, o solo cambia el estado de la sincronización. */
+export type OrigenCambio = "local" | "remoto" | "estado";
+
 export type Registro<T extends object = Record<string, unknown>> = T & Meta;
 
 export interface FicheroDatos {
@@ -107,7 +110,7 @@ export class Motor {
   private cache = new Map<string, EntradaCache>();
   private cola: Operacion[] = [];
   private indice: Indice = { etag: null, rama: "main", rutas: [], raiz: {} };
-  private oyentes = new Set<(rutas: Set<string>) => void>();
+  private oyentes = new Set<(rutas: Set<string>, origen: OrigenCambio) => void>();
   private enCurso: Promise<void> | null = null;
   private otraVez = false;
   private temporizador: ReturnType<typeof setTimeout> | null = null;
@@ -137,14 +140,14 @@ export class Motor {
     if (rama) this.indice.rama = rama;
   }
 
-  alCambiar(fn: (rutas: Set<string>) => void): () => void {
+  alCambiar(fn: (rutas: Set<string>, origen: OrigenCambio) => void): () => void {
     this.oyentes.add(fn);
     return () => this.oyentes.delete(fn);
   }
 
-  private emitir(rutas: Iterable<string>) {
+  private emitir(rutas: Iterable<string>, origen: OrigenCambio) {
     const s = new Set(rutas);
-    if (s.size) for (const fn of this.oyentes) fn(s);
+    if (s.size) for (const fn of this.oyentes) fn(s, origen);
   }
 
   // -------------------------------------------------------------------------
@@ -217,7 +220,7 @@ export class Motor {
   private async encolar(op: Operacion) {
     this.cola.push(op);
     await this.guardarCola();
-    this.emitir([op.ruta]);
+    this.emitir([op.ruta], "local");
     this.programarEnvio();
   }
 
@@ -285,7 +288,7 @@ export class Motor {
     } catch (e) {
       this.estado = this.estadoDeError(e);
     }
-    this.emitir(["__estado__"]);
+    this.emitir(["__estado__"], "estado");
   }
 
   private estadoDeError(e: unknown): EstadoSync {
@@ -335,7 +338,7 @@ export class Motor {
     // Si algún fichero no se pudo leer, no se guarda el etag: se reintentará.
     if (!fallo) this.indice.etag = arbol.etag;
     await this.almacen.set("motor:indice", this.indice);
-    this.emitir(cambiadas);
+    this.emitir(cambiadas, "remoto");
     return fallo;
   }
 
@@ -362,6 +365,7 @@ export class Motor {
       const registros = { ...(base?.registros ?? {}) };
       for (const op of ops) registros[op.registro.id] = fusionar(registros[op.registro.id], op.registro);
       const sinCambios = base && JSON.stringify(registros) === JSON.stringify(base.registros);
+      const visiblesAntes = JSON.stringify(this.visibles(ruta));
       try {
         if (!sinCambios) {
           const fichero: FicheroDatos = { esquema: 1, registros: purgarBorrados(registros, this.reloj()) };
@@ -372,7 +376,8 @@ export class Motor {
         const hechas = new Set(ops.map((o) => o.idOp));
         this.cola = this.cola.filter((o) => !hechas.has(o.idOp));
         await this.guardarCola();
-        this.emitir([ruta]);
+        // Solo se avisa si lo que se ve ha cambiado (p. ej., al juntarlo con lo de la otra).
+        if (JSON.stringify(this.visibles(ruta)) !== visiblesAntes) this.emitir([ruta], "remoto");
         return;
       } catch (e) {
         if (!(e instanceof ErrorConflicto) || intento + 1 >= MAX_REINTENTOS) throw e;

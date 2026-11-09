@@ -11,7 +11,8 @@ const CSP = [
   "script-src 'self'",
   "style-src 'self'",
   "font-src 'self'",
-  "img-src 'self' data: blob:",
+  // Teselas del mapa (OpenStreetMap).
+  "img-src 'self' data: blob: https://tile.openstreetmap.org",
   // GitHub (datos), Open-Meteo (tiempo) y la agenda de la Junta (Descubrir).
   "connect-src 'self' https://api.github.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://analisis.datosabiertos.jcyl.es https://api.frankfurter.dev",
   "worker-src 'self'",

@@ -30,7 +30,7 @@ import { ErrorConflicto, ErrorRemoto, ErrorRepoPublico } from "../github/errores
 import type { Conexion, InfoRepo, Remoto } from "../github/remoto";
 import type { Almacen } from "../local/almacen";
 import { AlmacenCifrado } from "../local/cifrado";
-import { Motor, type EstadoSync, type FicheroDatos, type Registro } from "../sync/motor";
+import { Motor, type EstadoSync, type FicheroDatos, type OrigenCambio, type Registro } from "../sync/motor";
 import { nuevoId } from "../util/bytes";
 
 /**
@@ -134,7 +134,7 @@ export class Merviri {
     this.remoto = this.conexion ? this.crearRemoto(this.conexion) : null;
     this.motor = new Motor(this.cifrado, this.claveDatos, this.remoto);
     await this.motor.iniciar();
-    this.motor.alCambiar((rutas) => void this.alCambiarDatos(rutas));
+    this.motor.alCambiar((rutas, origen) => void this.alCambiarDatos(rutas, origen));
     this.avisador = new Avisador(this);
     this.crearAlbum();
   }
@@ -150,12 +150,12 @@ export class Merviri {
     this.album = c && f && this.claveDatos ? new ServicioAlbum(this, (n) => f(c, n), this.claveDatos, this.base) : null;
   }
 
-  private async alCambiarDatos(rutas: Set<string>) {
+  private async alCambiarDatos(rutas: Set<string>, origen: OrigenCambio) {
     if (rutas.has(RUTA_ACCESO)) await this.revisarAcceso().catch(() => undefined);
     if (rutas.has(`__raiz__:${RUTA_LLAVERO}`)) await this.refrescarLlavero().catch(() => undefined);
     if (rutas.has(RUTA_TAREAS) || rutas.has(RUTA_PAREJA) || rutas.has(RUTA_SUSCRIPCIONES) || rutas.has(RUTA_CAPSULAS) || rutas.has(RUTA_FICHAS) ||
       [...rutas].some((r) => r.startsWith(PREFIJO_CALENDARIO))) this.avisador?.programar();
-    this.avisar([...rutas].join(","));
+    this.avisar(`${origen}:${[...rutas].join(",")}`);
   }
 
   /** Para el avisador: acceso al repositorio y al almacén cifrado del dispositivo. */
