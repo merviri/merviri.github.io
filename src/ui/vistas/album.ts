@@ -26,6 +26,7 @@ import { texto, volver } from "./comunes";
 import { campoLugar } from "./mapa";
 import { conCoordenadas } from "../../dominio/mapa";
 import { diaLargo } from "./evento";
+import { textoDuracion } from "../../fotos/video";
 
 type Pestana = "fotos" | "albumes" | "papelera";
 let pestana: Pestana = "fotos";
@@ -96,11 +97,14 @@ function miniatura(app: Merviri, f: Foto, ids: string[]): HTMLElement {
       contexto = ids; volverA = location.hash || "#album";
     },
   }, img, f.favorita ? h("span", { class: "marca-favorita", "aria-label": "Favorita" }, "❤️") : null,
+  f.video ? h("span", { class: "marca-video", "aria-label": `Vídeo de ${textoDuracion(f.video.duracion)}` }, `▶ ${textoDuracion(f.video.duracion)}`) : null,
   sel ? h("span", { class: "marca-seleccion", "aria-hidden": "true" }, "✓") : null) as HTMLElement & { cargar?: () => void };
   const sinVista = () => {
     caja.classList.add("sin-vista");
     img.remove();
-    caja.prepend(h("span", { class: "hueco-foto", title: "Sin vista previa: ábrela para descargarla" }, "🖼️", h("small", {}, "Sin vista previa")));
+    caja.prepend(f.video
+      ? h("span", { class: "hueco-foto" }, "🎬", h("small", {}, "Vídeo"))
+      : h("span", { class: "hueco-foto", title: "Sin vista previa: ábrela para descargarla" }, "🖼️", h("small", {}, "Sin vista previa")));
   };
   img.addEventListener("error", sinVista, { once: true });
   caja.cargar = () => {
@@ -135,7 +139,9 @@ export async function subirArchivos(app: Merviri, archivos: File[], album: strin
   const fallos = app.album.progreso?.fallos ?? [];
   const sinFecha = new Set(app.album.progreso?.sinFecha ?? []);
   if (fallos.length) tostada(`Subidas ${n}; ${fallos.length} no se pudieron subir.`, "error");
-  else if (sinFecha.size) {
+  else if (archivos.some((a) => a.type.startsWith("video/")) && !sinFecha.size) {
+    tostada(n === 1 ? "Subido ✨ (los vídeos ocupan mucho: mejor cortitos 😉)" : `${n} subidos ✨`);
+  } else if (sinFecha.size) {
     tostada(`${n === 1 ? "Foto subida" : `${n} fotos subidas`}. ${sinFecha.size === 1 ? "Una no traía" : `${sinFecha.size} no traían`} fecha y se ${sinFecha.size === 1 ? "ha puesto" : "han puesto"} con la de hoy.`, "info", {
       texto: "Poner fecha", hacer: () => void dialogoFecha(app, app.album!.fotos().filter((f) => sinFecha.has(f.id))),
     });
@@ -259,8 +265,8 @@ async function descargarUna(app: Merviri, f: Foto, boton: HTMLButtonElement) {
   });
 }
 
-function botonSubir(app: Merviri, album: string | null, textoBoton = "＋ Subir fotos"): HTMLElement {
-  const input = h("input", { type: "file", accept: "image/*", multiple: true, hidden: true });
+function botonSubir(app: Merviri, album: string | null, textoBoton = "＋ Subir"): HTMLElement {
+  const input = h("input", { type: "file", accept: "image/*,video/*", multiple: true, hidden: true });
   input.addEventListener("change", () => {
     const archivos = [...(input.files ?? [])];
     input.value = "";
@@ -276,9 +282,10 @@ function tarjetaProgreso(app: Merviri): HTMLElement | null {
   const barra = h("span", { class: "barra" });
   barra.style.width = `${Math.round((p.hechas / Math.max(1, p.total)) * 100)}%`;
   return h("div", { class: "tarjeta tarjeta-rosa" },
-    h("p", {}, h("b", {}, p.activa ? `Subiendo fotos: ${p.hechas} de ${p.total}…` : `Subida terminada: ${p.hechas - p.fallos.length} de ${p.total}`)),
+    h("p", {}, h("b", {}, p.activa ? `Subiendo: ${p.hechas} de ${p.total}…` : `Subida terminada: ${p.hechas - p.fallos.length} de ${p.total}`)),
     h("span", { class: "pista" }, barra),
-    p.activa ? h("p", { class: "pequeno arriba" }, "Deja Merviri abierta hasta que termine (cada foto se cifra antes de subirla).") : null,
+    p.activa && p.detalle ? h("p", { class: "pequeno arriba" }, p.detalle) : null,
+    p.activa ? h("p", { class: "pequeno arriba" }, "Deja Merviri abierta hasta que termine (cada foto se cifra antes de subirla; los vídeos, además, se comprimen).") : null,
     p.fallos.length ? h("details", { class: "arriba" }, h("summary", {}, `${p.fallos.length} con problemas`), h("ul", {}, p.fallos.map((x) => h("li", { class: "pequeno" }, x)))) : null,
     p.activa ? h("button", { type: "button", class: "boton boton-pequeno arriba", onclick: () => { app.album!.cancelar = true; } }, "Parar") : null,
   );
@@ -370,7 +377,7 @@ function pestanaFotos(app: Merviri, fotos: Foto[]): HTMLElement {
   if (!meses.length) {
     return h("div", { class: "tarjeta" },
       h("p", {}, h("b", {}, "Vuestro álbum, a calidad original ✨")),
-      h("p", {}, "Subid fotos desde aquí o, en Android, desde la galería con «Compartir → Merviri». Se ordenan solas por meses."));
+      h("p", {}, "Subid fotos (y vídeos cortitos) desde aquí o, en Android, desde la galería con «Compartir → Merviri». Se ordenan solas por meses."));
   }
   const sel = seleccionActual();
   return h("div", {}, meses.map(([m, lista]) => h("section", { class: "mes-fotos" },
@@ -501,6 +508,7 @@ export function vistaFoto(app: Merviri, id: string): HTMLElement {
   const i = contexto.indexOf(id);
   const anterior = i > 0 ? contexto[i - 1] : null;
   const siguiente = i >= 0 && i < contexto.length - 1 ? contexto[i + 1] : null;
+  if (f.video) return visorVideo(app, f, anterior ?? null, siguiente ?? null);
   const img = h("img", { class: "foto-grande", alt: `Foto del ${diaLargo(f.fecha)}` });
   const estado = h("p", { class: "secundario centro" }, "Cargando…");
   const noSeVe = () => { img.remove(); estado.textContent = "Esta foto no se puede mostrar aquí (formato que el navegador no sabe abrir), pero sí descargarla."; };
@@ -535,6 +543,61 @@ export function vistaFoto(app: Merviri, id: string): HTMLElement {
       h("button", { type: "button", class: "boton boton-pequeno", onclick: () => reponer.click() }, "Subir el original otra vez"), reponer) : null,
     h("div", { class: "botones centrados" },
       h("button", { type: "button", class: "boton", "aria-pressed": String(f.favorita), onclick: () => void app.album!.favorita(f) }, f.favorita ? "❤️ Favorita" : "🤍 Favorita"),
+      h("button", { type: "button", class: "boton", onclick: () => void elegirAlbumes(app, f) }, "📁 Álbumes"),
+      h("button", { type: "button", class: "boton", onclick: () => void dialogoFecha(app, [f]) }, "📅 Fecha"),
+      descargar,
+      f.papelera
+        ? h("button", { type: "button", class: "boton", onclick: () => void app.album!.recuperar(f) }, "Recuperar")
+        : h("button", {
+          type: "button", class: "boton boton-peligro",
+          onclick: async () => {
+            await app.album!.aPapelera(f);
+            tostada("A la papelera", "info", { texto: "Deshacer", hacer: () => void app.album!.recuperar(f) });
+            location.hash = siguiente ? `#foto/${siguiente}` : volverA;
+          },
+        }, "🗑️ Papelera")),
+  );
+}
+
+/**
+ * Visor de un vídeo: la portada y un botón para verlo (se baja entero y se
+ * descifra antes de reproducirlo; no se hace solo, por los datos móviles).
+ */
+function visorVideo(app: Merviri, f: Registro<Foto> | Foto, anterior: string | null, siguiente: string | null): HTMLElement {
+  const pareja = app.pareja();
+  const video = h("video", { class: "foto-grande", controls: true, playsinline: true, preload: "none" });
+  void app.album!.url(f, "vista").then((u) => { video.poster = u; }, () => undefined);
+  const estado = h("p", { class: "secundario centro" });
+  const ver = h("button", { type: "button", class: "boton boton-primario" }, `▶ Ver el vídeo (${formatoBytes(f.bytes)})`);
+  let url: string | null = null;
+  window.addEventListener("hashchange", () => { if (url) URL.revokeObjectURL(url); }, { once: true });
+  ver.addEventListener("click", () => void conBoton(ver, async () => {
+    const blob = await app.album!.original(f, (i, n) => { estado.textContent = n > 1 ? `Bajando el vídeo… ${Math.round((i / n) * 100)} %` : "Bajando el vídeo…"; });
+    url = URL.createObjectURL(blob);
+    video.src = url;
+    estado.textContent = "";
+    ver.remove();
+    await video.play().catch(() => undefined);
+  }, estado));
+  const albumes = app.album!.albumes().filter((a) => f.albumes.includes(a.id));
+  const autor = esIdPersona((f as Registro<Foto>).por) ? pareja.personas[(f as Registro<Foto>).por as "p1" | "p2"].nombre : null;
+  const descargar = h("button", { type: "button", class: "boton" }, "⬇️ Descargar");
+  descargar.addEventListener("click", () => void descargarUna(app, f, descargar));
+  return h("section", { class: "visor" },
+    volver(volverA, "Volver"),
+    h("div", { class: "marco-foto" },
+      anterior ? h("a", { class: "flecha-foto izq", href: `#foto/${anterior}`, "aria-label": "Anterior" }, "‹") : null,
+      video,
+      siguiente ? h("a", { class: "flecha-foto der", href: `#foto/${siguiente}`, "aria-label": "Siguiente" }, "›") : null),
+    h("div", { class: "botones centrados arriba" }, ver),
+    estado,
+    h("p", { class: "centro" }, `🎬 ${diaLargo(f.fecha)}${f.hora ? `, ${f.hora}` : ""} · ${textoDuracion(f.video!.duracion)}`,
+      autor ? h("small", { class: "secundario" }, ` · subido por ${autor}`) : null),
+    albumes.length ? h("p", { class: "centro" }, albumes.map((a) => h("a", { class: "pastilla pastilla-morado", href: `#album/${a.id}` }, `${a.emoji} ${a.nombre}`))) : null,
+    f.sinOriginal ? h("p", { class: "aviso-reserva" }, "Se ha perdido parte de este vídeo en GitHub.") : null,
+    f.papelera ? h("p", { class: "aviso-reserva" }, "Está en la papelera.") : null,
+    h("div", { class: "botones centrados" },
+      h("button", { type: "button", class: "boton", "aria-pressed": String(f.favorita), onclick: () => void app.album!.favorita(f) }, f.favorita ? "❤️ Favorito" : "🤍 Favorito"),
       h("button", { type: "button", class: "boton", onclick: () => void elegirAlbumes(app, f) }, "📁 Álbumes"),
       h("button", { type: "button", class: "boton", onclick: () => void dialogoFecha(app, [f]) }, "📅 Fecha"),
       descargar,

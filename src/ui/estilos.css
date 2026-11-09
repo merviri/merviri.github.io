@@ -714,3 +714,8 @@ a.ficha { text-decoration: none; color: inherit; }
 /* Foto sin vista previa (formato que el navegador no sabe abrir) */
 .hueco-foto { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 0.2rem; font-size: 1.6rem; color: var(--texto-2); }
 .hueco-foto small { font-size: 0.65rem; font-weight: 700; }
+
+/* Vídeos */
+.marca-video { position: absolute; left: 4px; bottom: 4px; padding: 0.05rem 0.4rem; border-radius: 999px; font-size: 0.7rem; font-weight: 800;
+  color: #FFFFFF; background: rgb(0 0 0 / 55%); }
+.visor video.foto-grande { width: 100%; background: #000; }

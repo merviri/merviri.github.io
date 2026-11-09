@@ -41,11 +41,14 @@
           "name": "fotos",
           "accept": [
             "image/*",
+            "video/*",
             ".jpg",
             ".jpeg",
             ".png",
             ".heic",
-            ".webp"
+            ".webp",
+            ".mp4",
+            ".mov"
           ]
         }
       ]

@@ -15,6 +15,8 @@ const CSP = [
   "img-src 'self' data: blob: https://tile.openstreetmap.org",
   // GitHub (datos), Open-Meteo (tiempo) y la agenda de la Junta (Descubrir).
   "connect-src 'self' https://api.github.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://analisis.datosabiertos.jcyl.es https://api.frankfurter.dev",
+  // Vídeos del álbum (se descifran en el móvil y se reproducen desde un blob:).
+  "media-src 'self' blob:",
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",
@@ -42,7 +44,8 @@ export default defineConfig({
   base: "/",
   define: { __MERVIRI_VERSION__: JSON.stringify(VERSION) },
   plugins: [publicar()],
-  build: { assetsInlineLimit: 0 },
+  // Mediabunny (vídeos) va en su propio trozo de ~700 KB que solo se carga al subir un vídeo.
+  build: { assetsInlineLimit: 0, chunkSizeWarningLimit: 800 },
   test: {
     globals: true,
     environment: "node",

@@ -10,6 +10,7 @@ import {
   RUTA_ALBUMES,
   rutaArchivo,
   rutaFotos,
+  rutaParte,
   type Album,
   type Foto,
   type Tamano,
@@ -17,6 +18,7 @@ import {
 import { hoy, type Fecha } from "../dominio/fechas";
 import { fechaExif } from "../fotos/exif";
 import { reducidas } from "../fotos/imagen";
+import { esVideo, prepararVideo, trocear } from "../fotos/video";
 import { crearZip } from "../fotos/zip";
 import type { RepoFotos } from "../github/fotos";
 import { ErrorRemoto } from "../github/errores";
@@ -39,6 +41,8 @@ export interface Progreso {
   activa: boolean;
   /** Fotos que no traían fecha (ni EXIF ni en el nombre): se pusieron con la de hoy. */
   sinFecha: string[];
+  /** Qué está haciendo ahora (p. ej., «Comprimiendo el vídeo… 40 %»). */
+  detalle: string | null;
 }
 
 const noEsta = (e: unknown) => e instanceof ErrorRemoto && e.status === 404;
@@ -87,7 +91,7 @@ export class ServicioAlbum {
   async subir(archivos: File[], album: string | null, alAvanzar: () => void = () => {}): Promise<number> {
     if (this.progreso?.activa) throw new Error("Ya se están subiendo fotos.");
     this.cancelar = false;
-    this.progreso = { total: archivos.length, hechas: 0, fallos: [], activa: true, sinFecha: [] };
+    this.progreso = { total: archivos.length, hechas: 0, fallos: [], activa: true, sinFecha: [], detalle: null };
     alAvanzar();
     // Que no se apague la pantalla mientras sube.
     let bloqueo: WakeLockSentinel | null = null;
@@ -98,9 +102,15 @@ export class ServicioAlbum {
       for (const archivo of archivos) {
         if (this.cancelar) break;
         try {
-          const r = await this.subirUna(archivo, album);
-          if (r.sinFecha) this.progreso.sinFecha.push(r.id);
-          hechas.set(r.id, archivo);
+          if (esVideo(archivo)) {
+            const r = await this.subirVideo(archivo, album, (t) => { this.progreso!.detalle = t; alAvanzar(); });
+            if (r.sinFecha) this.progreso.sinFecha.push(r.id);
+          } else {
+            const r = await this.subirUna(archivo, album);
+            if (r.sinFecha) this.progreso.sinFecha.push(r.id);
+            hechas.set(r.id, archivo);
+          }
+          this.progreso.detalle = null;
           subidas++;
         } catch (e) {
           this.progreso.fallos.push(`${archivo.name}: ${(e as Error).message}`);
@@ -121,6 +131,52 @@ export class ServicioAlbum {
       avisarFotos(this.app, subidas, a ?? null);
     }
     return subidas;
+  }
+
+  /** Fecha y hora (de Madrid) de algo, sacadas de un instante. */
+  private static fechaHora(d: Date): { fecha: Fecha; hora: string } {
+    return { fecha: hoy(d), hora: new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d) };
+  }
+
+  /**
+   * Un vídeo: se comprime en el móvil, se saca su portada y se sube cifrado en
+   * trozos. Al terminar se comprueba que estén todos los trozos.
+   */
+  private async subirVideo(archivo: File, album: string | null, detalle: (t: string) => void): Promise<{ id: string; sinFecha: boolean }> {
+    detalle("Preparando el vídeo…");
+    const v = await prepararVideo(archivo, detalle);
+    const deNombre = v.grabado ? null : fechaDeNombre(archivo.name, hoy());
+    const cuando = v.grabado ? ServicioAlbum.fechaHora(v.grabado) : deNombre ?? ServicioAlbum.fechaHora(new Date(archivo.lastModified || Date.now()));
+    const sinFecha = !v.grabado && !deNombre && cuando.fecha === hoy();
+    const partes = trocear(v.datos);
+    const mini = v.mini ? new Uint8Array(await v.mini.arrayBuffer()) : null;
+    const vista = v.vista ? new Uint8Array(await v.vista.arrayBuffer()) : null;
+    const bytes = v.datos.length + (mini?.length ?? 0) + (vista?.length ?? 0);
+    const repo = elegirRepo(this.fotos(), bytes);
+    if (!repo) throw new Error("Los cinco repositorios de fotos están llenos.");
+    const id = nuevoId();
+    const base = `fotos/${cuando.fecha.slice(0, 4)}/${cuando.fecha.slice(5, 7)}/${id}`;
+    const r = this.repo(repo);
+    const foto: Foto = {
+      id, repo, base, fecha: cuando.fecha, hora: cuando.hora ?? null, nombre: archivo.name.slice(0, 120), tipo: v.tipo,
+      ancho: v.ancho, alto: v.alto, bytes, sinVista: false, albumes: album ? [album] : [], favorita: false, papelera: null,
+      video: { duracion: Math.round(v.duracion * 10) / 10, partes: partes.length },
+    };
+    // Sin portada se sube una imagen vacía, para que el vídeo tenga sus ficheros completos.
+    const vacia = new Uint8Array(0);
+    await r.subir(rutaArchivo(foto, "mini"), await cerrarBinario(this.clave, rutaArchivo(foto, "mini"), mini ?? vacia));
+    await r.subir(rutaArchivo(foto, "vista"), await cerrarBinario(this.clave, rutaArchivo(foto, "vista"), vista ?? vacia));
+    if (mini) await this.cache.set(`foto:${id}:mini`, await cerrarBinario(this.clave, rutaArchivo(foto, "mini"), mini)).catch(() => undefined);
+    const subir = async (i: number) => r.subir(rutaParte(foto, i), await cerrarBinario(this.clave, rutaParte(foto, i), partes[i]!));
+    for (let i = 0; i < partes.length; i++) {
+      detalle(`Subiendo el vídeo… ${Math.round((i / partes.length) * 100)} %`);
+      await subir(i);
+    }
+    // Que no falte ningún trozo (se tienen aún en memoria para volver a subirlos).
+    const hay = await r.listar().catch(() => null);
+    if (hay) for (let i = 0; i < partes.length; i++) if (!hay.has(rutaParte(foto, i))) await subir(i);
+    await this.app.guardar<Foto>(rutaFotos(foto.fecha), foto);
+    return { id, sinFecha };
   }
 
   private async subirUna(archivo: File, album: string | null): Promise<{ id: string; sinFecha: boolean }> {
@@ -214,7 +270,17 @@ export class ServicioAlbum {
     return url;
   }
 
-  async original(f: Foto): Promise<Blob> {
+  async original(f: Foto, alAvanzar?: (hechos: number, total: number) => void): Promise<Blob> {
+    if (f.video) {
+      const trozos: Uint8Array<ArrayBuffer>[] = [];
+      for (let i = 0; i < f.video.partes; i++) {
+        alAvanzar?.(i, f.video.partes);
+        const cifrado = await this.repo(f.repo).bajar(rutaParte(f, i));
+        trozos.push(await abrirBinario(this.clave, rutaParte(f, i), cifrado));
+      }
+      alAvanzar?.(f.video.partes, f.video.partes);
+      return new Blob(trozos, { type: f.tipo });
+    }
     return new Blob([await this.bytes(f, "orig")], { type: f.tipo });
   }
 
@@ -225,6 +291,7 @@ export class ServicioAlbum {
     } catch (e) {
       if (!noEsta(e) || f.sinVista) throw e;
       if (!f.sinOriginal) await this.guardarFoto({ ...f, sinOriginal: true }).catch(() => undefined);
+      if (f.video) throw new Error("Se ha perdido parte de este vídeo: no se puede descargar.");
       return { blob: new Blob([await this.bytes(f, "vista")], { type: "image/jpeg" }), reducida: true };
     }
   }
@@ -235,6 +302,7 @@ export class ServicioAlbum {
    * o el original no está). Solo se intenta una vez por sesión.
    */
   arreglar(f: Foto): Promise<Registro<Foto> | null> {
+    if (f.video) return Promise.resolve(null);
     let p = this.arregladas.get(f.id);
     if (!p) {
       p = (async () => {
@@ -301,7 +369,7 @@ export class ServicioAlbum {
           if (f.sinOriginal) await this.guardarFoto({ ...f, sinOriginal: false });
           continue;
         }
-        if (falta.includes(rutaArchivo(f, "orig"))) {
+        if (falta.some((r) => /\.orig(\.\d+)?$/.test(r))) {
           if (!f.sinOriginal) { await this.guardarFoto({ ...f, sinOriginal: true }); sinOriginal++; }
         } else if (await this.arreglar(f)) {
           arregladas++;

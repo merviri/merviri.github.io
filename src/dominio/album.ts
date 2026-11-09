@@ -38,11 +38,20 @@ export interface Foto {
   papelera: string | null;
   /** El original se perdió (solo queda la vista de 1600 px). */
   sinOriginal?: boolean;
+  /**
+   * Si es un vídeo: duración (s) y en cuántos trozos está el vídeo
+   * (`<base>.orig.0`, `.orig.1`…). La miniatura y la vista son su portada.
+   */
+  video?: { duracion: number; partes: number } | null;
 }
 
-/** Ficheros que tiene que haber en el repositorio para una foto. */
-export const archivosDe = (f: Pick<Foto, "base" | "sinVista">): string[] =>
-  f.sinVista ? [`${f.base}.orig`] : [`${f.base}.mini`, `${f.base}.vista`, `${f.base}.orig`];
+export const rutaParte = (f: Pick<Foto, "base">, i: number) => `${f.base}.orig.${i}`;
+
+/** Ficheros que tiene que haber en el repositorio para una foto (o un vídeo). */
+export function archivosDe(f: Pick<Foto, "base" | "sinVista" | "video">): string[] {
+  if (f.video) return [`${f.base}.mini`, `${f.base}.vista`, ...Array.from({ length: f.video.partes }, (_, i) => rutaParte(f, i))];
+  return f.sinVista ? [`${f.base}.orig`] : [`${f.base}.mini`, `${f.base}.vista`, `${f.base}.orig`];
+}
 
 /** Base de un fichero del repositorio («…/id.mini» → «…/id»). */
 export const baseDeArchivo = (ruta: string) => ruta.replace(/\.(mini|vista|orig)(\.\d+)?$/, "");
@@ -92,6 +101,10 @@ export function diasEnPapelera(f: Foto, ahora: Date): number {
 }
 
 export function extension(f: Pick<Foto, "tipo" | "nombre">): string {
+  // Los vídeos se guardan comprimidos en MP4 aunque el archivo original fuera otro.
+  if (f.tipo === "video/mp4") return "mp4";
+  if (f.tipo === "video/quicktime") return "mov";
+  if (f.tipo === "video/webm") return "webm";
   const m = /\.([a-z0-9]{2,5})$/i.exec(f.nombre);
   if (m) return m[1]!.toLowerCase();
   if (f.tipo === "image/png") return "png";

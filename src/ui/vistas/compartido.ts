@@ -69,7 +69,7 @@ export function vistaCompartido(app: Merviri): HTMLElement {
       h("option", { value: "" }, "Solo al álbum (por meses)"),
       albumes.map((a) => h("option", { value: a.id }, `${a.emoji} ${a.nombre}`)),
       planes.map((p) => h("option", { value: albumDePlan(p.id) }, `✨ ${p.titulo}`)));
-    const subir = h("button", { type: "button", class: "boton boton-primario" }, `Subir ${d.archivos.length === 1 ? "la foto" : `${d.archivos.length} fotos`}`);
+    const subir = h("button", { type: "button", class: "boton boton-primario" }, d.archivos.length === 1 ? "Subir" : `Subir los ${d.archivos.length}`);
     subir.addEventListener("click", () => void conBoton(subir, async () => {
       const album = sel.value || null;
       const archivos = d.archivos;
@@ -79,8 +79,8 @@ export function vistaCompartido(app: Merviri): HTMLElement {
       await subirArchivos(app, archivos, album);
     }));
     return h("section", {},
-      h("h1", {}, "📷 Fotos compartidas"),
-      h("p", {}, `${d.archivos.length === 1 ? "Una foto" : `${d.archivos.length} fotos`} para el álbum de Merviri. Se suben en su calidad original y cifradas.`),
+      h("h1", {}, "📷 Para el álbum"),
+      h("p", {}, `${d.archivos.length === 1 ? "Un archivo" : `${d.archivos.length} archivos`} para el álbum de Merviri. Las fotos se suben en su calidad original y los vídeos, comprimidos; todo cifrado.`),
       h("div", { class: "campo" }, h("label", {}, "¿A qué álbum?"), sel),
       h("div", { class: "botones" }, subir, h("button", { type: "button", class: "boton", onclick: () => void terminar("#inicio") }, "Cancelar")),
     );
