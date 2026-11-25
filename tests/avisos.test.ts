@@ -1,7 +1,7 @@
 import { createPublicKey, generateKeyPairSync, verify } from "node:crypto";
 import { avisoEnBytes, cifrarAviso } from "../src/avisos/push";
 import { enSilencio, enumerar, horaMadrid, instanteMadrid, planificar, quiere, type Suscripcion } from "../src/dominio/avisos";
-import { PAREJA_INICIAL } from "../src/dominio/pareja";
+import { PAREJA_PRUEBA } from "./pareja-prueba";
 import type { Tarea } from "../src/dominio/tareas";
 import { aBase64Url, desdeBase64Url, desdeUtf8, unir, utf8 } from "../src/util/bytes";
 // @ts-expect-error: módulo JS sin tipos (se ejecuta en GitHub Actions)
@@ -42,9 +42,9 @@ describe("cifrado de avisos (RFC 8291)", () => {
   it("el móvil de destino lo abre y nadie más", async () => {
     const m = await movil();
     const otro = await movil();
-    const aviso = { t: "🎨 Elvira te ha dejado un dibujo", b: "Ábrelo en Merviri ✨", r: "dibujo/abc", e: "dibujo-abc" };
+    const aviso = { t: "🎨 Ana te ha dejado un dibujo", b: "Ábrelo en Merviri ✨", r: "dibujo/abc", e: "dibujo-abc" };
     const cuerpo = await cifrarAviso(m.claves, avisoEnBytes(aviso));
-    expect(new TextDecoder().decode(cuerpo)).not.toContain("Elvira");
+    expect(new TextDecoder().decode(cuerpo)).not.toContain("Ana");
     expect(JSON.parse(await descifrarComoMovil(cuerpo, m.par, m.auth))).toEqual(aviso);
     await expect(descifrarComoMovil(cuerpo, otro.par, otro.auth)).rejects.toThrow();
   });
@@ -98,7 +98,7 @@ describe("plan de avisos con hora", () => {
     const plan = planificar({
       tareas: [tarea({ id: "a", titulo: "Basura", fecha: "2026-11-08" }), tarea({ id: "b", titulo: "Fontanero", fecha: "2026-11-09", responsable: "p2" }),
         tarea({ id: "c", titulo: "Hecha", fecha: "2026-11-08", hecha: true })],
-      pareja: PAREJA_INICIAL,
+      pareja: PAREJA_PRUEBA,
       suscripciones: [sub("movil-e", "p1"), sub("movil-m", "p2")],
       ahora: new Date("2026-11-07T10:00:00Z"), hoy: "2026-11-07", dias: 3,
     });
@@ -111,7 +111,7 @@ describe("plan de avisos con hora", () => {
 
   it("aniversarios y días redondos para las dos (si lo quieren)", () => {
     const plan = planificar({
-      tareas: [], pareja: { ...PAREJA_INICIAL, juntasDesde: "2023-11-10" },
+      tareas: [], pareja: { ...PAREJA_PRUEBA, juntasDesde: "2023-11-10" },
       suscripciones: [sub("e", "p1"), sub("m", "p2", { aniversario: false })],
       ahora: new Date("2026-11-07T10:00:00Z"), hoy: "2026-11-07", dias: 7,
     });

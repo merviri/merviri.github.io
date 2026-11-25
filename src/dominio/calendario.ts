@@ -2,7 +2,7 @@ import { diasEntre, esFecha, sumarDias, type Fecha } from "./fechas";
 import type { IdPersona } from "./pareja";
 
 /**
- * Calendario común: cosas de Elvira, de María o de las dos.
+ * Calendario común: cosas de una, de la otra o de las dos.
  *  - Eventos sueltos en `datos/calendario/<año>.json` (por año de inicio, para
  *    que ningún fichero crezca sin fin).
  *  - Eventos que se repiten en `datos/calendario/repetidos.json`.

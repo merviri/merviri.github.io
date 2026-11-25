@@ -1,4 +1,5 @@
 import { AJUSTES_FESTIVOS, eventosFestivos, ID_AJUSTES_FESTIVOS, RUTA_FESTIVOS, type AjustesFestivos } from "../dominio/festivos";
+import { leerZona, RUTA_ZONA, type Zona } from "../dominio/zona";
 import { festivosLocales } from "../servicios/festivos";
 import { RUTA_CAPSULAS, RUTA_FICHAS } from "../dominio/juntas";
 import { ErrorDescifrado } from "../cifrado/errores";
@@ -72,7 +73,7 @@ export type Fase = "cargando" | "sin-configurar" | "lista";
 export type CrearRemoto = (c: Conexion) => Remoto;
 
 const K = { dispositivo: "local:dispositivo", clave: "local:clave" };
-const KC = { conexion: "conexion", llavero: "llavero", practica: "practica" };
+const KC = { conexion: "conexion", llavero: "llavero", practica: "practica", zona: "zona" };
 
 export class Merviri {
   fase: Fase = "cargando";
@@ -80,6 +81,10 @@ export class Merviri {
   conexion: ConexionLocal | null = null;
   llavero: Llavero | null = null;
   practica: Practica | null = null;
+  /** La zona (ciudad, festivos, sitios…), de `zona.json` del repositorio privado. */
+  private zonaActual: Zona | null = null;
+  /** Solo en desarrollo: zona de ejemplo si el repositorio no tiene. */
+  zonaReserva: Zona | null = null;
   motor: Motor | null = null;
   avisador: Avisador | null = null;
   album: ServicioAlbum | null = null;
@@ -130,6 +135,7 @@ export class Merviri {
     this.cifrado = new AlmacenCifrado(this.base, clave);
     this.conexion = (await this.cifrado.get<ConexionLocal>(KC.conexion)) ?? null;
     this.llavero = (await this.cifrado.get<Llavero>(KC.llavero)) ?? null;
+    this.zonaActual = leerZona(await this.cifrado.get<unknown>(KC.zona));
     this.practica = (await this.cifrado.get<Practica>(KC.practica)) ?? null;
     this.remoto = this.conexion ? this.crearRemoto(this.conexion) : null;
     this.motor = new Motor(this.cifrado, this.claveDatos, this.remoto);
@@ -153,6 +159,7 @@ export class Merviri {
   private async alCambiarDatos(rutas: Set<string>, origen: OrigenCambio) {
     if (rutas.has(RUTA_ACCESO)) await this.revisarAcceso().catch(() => undefined);
     if (rutas.has(`__raiz__:${RUTA_LLAVERO}`)) await this.refrescarLlavero().catch(() => undefined);
+    if (rutas.has(`__raiz__:${RUTA_ZONA}`)) await this.cargarZona().catch(() => undefined);
     if (rutas.has(RUTA_TAREAS) || rutas.has(RUTA_PAREJA) || rutas.has(RUTA_SUSCRIPCIONES) || rutas.has(RUTA_CAPSULAS) || rutas.has(RUTA_FICHAS) ||
       [...rutas].some((r) => r.startsWith(PREFIJO_CALENDARIO))) this.avisador?.programar();
     this.avisar(`${origen}:${[...rutas].join(",")}`);
@@ -175,7 +182,24 @@ export class Merviri {
   }
 
   /** Tareas de fondo tras sincronizar: «última vez» del dispositivo y token nuevo. */
+  /** La zona donde vivís (null si aún no se ha leído o no hay). */
+  zona(): Zona | null {
+    return this.zonaActual ?? this.zonaReserva;
+  }
+
+  /** Lee `zona.json` del repositorio privado y guarda una copia (cifrada) en el dispositivo. */
+  private async cargarZona(): Promise<void> {
+    if (!this.remoto || !this.cifrado) return;
+    const f = await this.remoto.leer(RUTA_ZONA);
+    const z = f ? leerZona(JSON.parse(f.texto)) : null;
+    if (!z || JSON.stringify(z) === JSON.stringify(this.zonaActual)) return;
+    this.zonaActual = z;
+    await this.cifrado.set(KC.zona, z);
+    this.avisar("zona");
+  }
+
   private async mantenimiento() {
+    if (!this.zonaActual) await this.cargarZona().catch(() => undefined);
     await this.revisarAcceso().catch(() => undefined);
     await this.registrarDispositivo().catch(() => undefined);
     await this.revisarSuscripcion().catch(() => undefined);
@@ -380,10 +404,11 @@ export class Merviri {
     return this.motor.rutasCon(PREFIJO_CALENDARIO).flatMap((r) => this.lista<Evento>(r));
   }
 
-  /** Los eventos y, además, los festivos de Valladolid (no se guardan: se calculan). */
+  /** Los eventos y, además, los festivos de vuestra ciudad (no se guardan: se calculan). */
   eventosConFestivos(): Evento[] {
     const aj = this.uno<AjustesFestivos>(RUTA_FESTIVOS, ID_AJUSTES_FESTIVOS) ?? AJUSTES_FESTIVOS;
-    return [...this.eventos(), ...eventosFestivos(aj, festivosLocales())];
+    const zona = this.zona();
+    return [...this.eventos(), ...eventosFestivos(aj, zona, festivosLocales(zona?.municipioIne))];
   }
 
   /** Guarda un evento en su fichero; si cambió de fichero (otro año, o pasa a repetirse), lo quita del anterior. */

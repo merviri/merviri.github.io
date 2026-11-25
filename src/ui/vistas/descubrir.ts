@@ -2,10 +2,10 @@ import type { Merviri } from "../../app/app";
 import { avisarEvento } from "../../app/eventos";
 import type { Evento } from "../../dominio/calendario";
 import { fechaCorta, hoy, type Fecha } from "../../dominio/fechas";
-import { CATALOGO, FECHAS_ESPECIALES, proximaVez, reservaDe, type Idea } from "../../dominio/ideas";
+import { catalogoDe, fechasEspecialesDe, proximaVez, reservaDe, type FechaEspecial, type Idea } from "../../dominio/ideas";
 import { COSTES, DURACIONES, SITIOS, type Plan, type Sitio } from "../../dominio/planes";
-import { agendaValladolid, type EventoAgenda } from "../../servicios/agenda";
-import { enlaceMapa, SITIOS_CERCA, TIPOS_SITIO, type TipoSitio } from "../../servicios/sitios";
+import { agendaDe, type EventoAgenda } from "../../servicios/agenda";
+import { enlaceMapa, sitiosCerca, TIPOS_SITIO, type TipoSitio } from "../../servicios/sitios";
 import { nuevoId } from "../../util/bytes";
 import { conBoton, h, tostada } from "../dom";
 import { volver } from "./comunes";
@@ -61,7 +61,7 @@ function botonAnadir(app: Merviri, base: Partial<Plan> & { titulo: string }, al?
 function pestanaIdeas(app: Merviri): HTMLElement {
   const fuera = descartes();
   const ya = yaEsta(app);
-  const ideas = CATALOGO.filter((i) => !fuera.has(i.id) && !ya.has(i.titulo.toLowerCase()) && (!sitioIdeas || i.sitio === sitioIdeas));
+  const ideas = catalogoDe(app.zona()).filter((i) => !fuera.has(i.id) && !ya.has(i.titulo.toLowerCase()) && (!sitioIdeas || i.sitio === sitioIdeas));
   return h("div", {},
     h("div", { class: "fichas" }, SITIOS.map((s) => h("button", {
       type: "button", class: "ficha", "aria-pressed": String(sitioIdeas === s.id),
@@ -96,15 +96,19 @@ async function alCalendario(app: Merviri, ev: EventoAgenda) {
   tostada(`Al calendario el ${fechaCorta(ev.inicio)} ✨`);
 }
 
+const sinZona = () => h("p", { class: "secundario" }, "Falta la zona (ciudad y provincia) en los datos de Merviri.");
+
 function pestanaAgenda(app: Merviri): HTMLElement {
+  const zona = app.zona();
+  if (!zona?.provincia) return sinZona();
   if (agenda.estado === "nada") {
     agenda = { estado: "cargando", datos: [] };
-    void agendaValladolid(hoy()).then(
+    void agendaDe(zona.provincia, hoy()).then(
       (datos) => { agenda = { estado: "lista", datos }; app.refrescar(); },
       (e: Error) => { agenda = { estado: "error", datos: [], error: e.message }; app.refrescar(); },
     );
   }
-  if (agenda.estado === "cargando") return h("p", { class: "secundario" }, "Mirando la agenda de Valladolid…");
+  if (agenda.estado === "cargando") return h("p", { class: "secundario" }, `Mirando la agenda de ${zona.provincia}…`);
   if (agenda.estado === "error") {
     return h("div", {}, h("p", { class: "error" }, agenda.error ?? "No se pudo leer la agenda."),
       h("button", { type: "button", class: "boton", onclick: () => { agenda = { estado: "nada", datos: [] }; app.refrescar(); } }, "Reintentar"));
@@ -135,23 +139,23 @@ function pestanaAgenda(app: Merviri): HTMLElement {
           h("span", { class: "acciones" },
             botonAnadir(app, {
               titulo: e.titulo, desde: e.inicio, hasta: e.fin ?? e.inicio, enlace: e.enlace, etiquetas: [e.categoria.toLowerCase()],
-              duracion: "rato", plazo: "corto", sitio: e.localidad === "Valladolid" ? "ciudad" : "cerca", clima: "da-igual",
+              duracion: "rato", plazo: "corto", sitio: e.localidad === zona.ciudad.nombre ? "ciudad" : "cerca", clima: "da-igual",
               lugar: e.lugar ? { nombre: [e.lugar, e.localidad].filter(Boolean).join(", "), lat: e.lat, lon: e.lon } : null,
               momentos: e.hora ? [+e.hora.slice(0, 2) < 14 ? "manana" : +e.hora.slice(0, 2) < 20 ? "tarde" : "noche"] : [],
             }),
             h("button", { type: "button", class: "boton boton-pequeno", onclick: () => void alCalendario(app, e) }, "📅"),
             e.enlace ? h("a", { class: "boton boton-pequeno", href: e.enlace, target: "_blank", rel: "noopener noreferrer", "aria-label": "Más información" }, "ℹ️") : null))))))
       : h("p", { class: "secundario" }, "No hay nada con estos filtros."),
-    h("p", { class: "secundario pequeno arriba" }, "Datos abiertos de la agenda cultural de la Junta de Castilla y León."),
+    h("p", { class: "secundario pequeno arriba" }, `Datos abiertos de la agenda cultural${zona.comunidad ? ` de ${zona.comunidad}` : ""}.`),
   );
 }
 
 function pestanaFechas(app: Merviri): HTMLElement {
   const hoyF = hoy();
   const ya = yaEsta(app);
-  const fechas = FECHAS_ESPECIALES
+  const fechas = fechasEspecialesDe(app.zona())
     .map((f) => ({ f, cuando: proximaVez(f, hoyF) }))
-    .filter((x): x is { f: (typeof FECHAS_ESPECIALES)[number]; cuando: [Fecha, Fecha] } => x.cuando !== null)
+    .filter((x): x is { f: FechaEspecial; cuando: [Fecha, Fecha] } => x.cuando !== null)
     .sort((a, b) => a.cuando[0].localeCompare(b.cuando[0]));
   return h("div", {},
     h("ul", { class: "tarjetas-lista" }, fechas.map(({ f, cuando }) => h("li", { class: "tarjeta-enlace descubrir" },
@@ -171,7 +175,9 @@ function pestanaFechas(app: Merviri): HTMLElement {
 
 function pestanaSitios(app: Merviri): HTMLElement {
   const ya = yaEsta(app);
-  const lista = SITIOS_CERCA.filter((s) => !tipoSitio || s.tipo === tipoSitio);
+  const zona = app.zona();
+  if (!zona) return sinZona();
+  const lista = sitiosCerca(zona).filter((s) => !tipoSitio || s.tipo === tipoSitio);
   return h("div", {},
     h("div", { class: "fichas" }, TIPOS_SITIO.map((t) => h("button", {
       type: "button", class: "ficha", "aria-pressed": String(tipoSitio === t.id), onclick: () => { tipoSitio = tipoSitio === t.id ? null : t.id; app.refrescar(); },
@@ -180,7 +186,7 @@ function pestanaSitios(app: Merviri): HTMLElement {
       const t = TIPOS_SITIO.find((x) => x.id === s.tipo)!;
       return h("li", { class: "tarjeta-enlace descubrir" },
         h("span", { class: "emoji-grande", "aria-hidden": "true" }, t.emoji),
-        h("span", { class: "crece" }, h("b", {}, s.nombre), h("small", { class: "secundario" }, s.km <= 3 ? "En Valladolid" : `A unos ${s.km} km`)),
+        h("span", { class: "crece" }, h("b", {}, s.nombre), h("small", { class: "secundario" }, s.km <= 3 ? `En ${zona.ciudad.nombre}` : `A unos ${s.km} km`)),
         h("span", { class: "acciones" },
           ya.has(s.nombre.toLowerCase()) ? h("span", { class: "secundario pequeno" }, "✓")
             : botonAnadir(app, {
@@ -191,7 +197,7 @@ function pestanaSitios(app: Merviri): HTMLElement {
           h("a", { class: "boton boton-pequeno", href: enlaceMapa(s.nombre), target: "_blank", rel: "noopener noreferrer", "aria-label": `Ver ${s.nombre} en el mapa` }, "🗺️")));
     })),
     h("p", { class: "secundario pequeno arriba" }, "¿Buscáis más? ",
-      h("a", { href: enlaceMapa("miradores y rutas cerca de Valladolid"), target: "_blank", rel: "noopener noreferrer" }, "Buscar en el mapa"), "."),
+      h("a", { href: enlaceMapa(`miradores y rutas cerca de ${zona.ciudad.nombre}`), target: "_blank", rel: "noopener noreferrer" }, "Buscar en el mapa"), "."),
   );
 }
 

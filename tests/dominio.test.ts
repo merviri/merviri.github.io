@@ -75,7 +75,7 @@ describe("acceso", () => {
 
 describe("dispositivos", () => {
   it("nombre por defecto", () => {
-    expect(nombrePorDefecto("María", "Mozilla/5.0 (Linux; Android 15) Mobile")).toBe("Móvil de María");
-    expect(nombrePorDefecto("Elvira", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("Ordenador de Elvira");
+    expect(nombrePorDefecto("Bea", "Mozilla/5.0 (Linux; Android 15) Mobile")).toBe("Móvil de Bea");
+    expect(nombrePorDefecto("Ana", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)")).toBe("Ordenador de Ana");
   });
 });

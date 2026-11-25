@@ -20,7 +20,7 @@ import {
   type RepeticionEvento,
 } from "../../dominio/calendario";
 import { esFecha, fechaCorta, fechaLarga, hoy, type Fecha } from "../../dominio/fechas";
-import { AJUSTES_FESTIVOS, ID_AJUSTES_FESTIVOS, listaFestivos, RUTA_FESTIVOS, ULTIMO_ANIO_FESTIVOS, type AjustesFestivos } from "../../dominio/festivos";
+import { AJUSTES_FESTIVOS, ID_AJUSTES_FESTIVOS, listaFestivos, RUTA_FESTIVOS, ultimoAnioFestivos, type AjustesFestivos } from "../../dominio/festivos";
 import { festivosLocales } from "../../servicios/festivos";
 import { esIdPersona, otraPersona, type IdPersona } from "../../dominio/pareja";
 import type { Registro } from "../../sync/motor";
@@ -73,7 +73,7 @@ export async function verEvento(app: Merviri, o: Ocurrencia<EventoVisible>) {
     e.privado && !ajeno ? h("p", { class: "secundario" }, `🔒 ${pareja.personas[otraPersona(app.persona)].nombre} solo ve «Ocupada».`) : null,
     autor && !e.virtual ? h("p", { class: "secundario pequeno" }, `Lo apuntó ${autor}.`) : null,
     e.categoria === "festivo"
-      ? h("p", { class: "secundario pequeno" }, `${textoLibran(app, e.libran ?? [])} Festivo oficial (BOCyL y fiestas locales de Valladolid). Se cambia en Calendario → 🎉 Festivos.`)
+      ? h("p", { class: "secundario pequeno" }, `${textoLibran(app, e.libran ?? [])} Festivo oficial (de la comunidad o fiesta local). Se cambia en Calendario → 🎉 Festivos.`)
       : e.virtual ? h("p", { class: "secundario pequeno" }, "La fecha se cambia en Ajustes → Vosotras.") : null,
   );
   const acciones: { texto: string; valor: string; tipo?: "primario" | "peligro" | "normal" }[] = [{ texto: "Cerrar", valor: "cerrar" }];
@@ -316,10 +316,14 @@ export async function ajustesFestivos(app: Merviri) {
   const aj = app.uno<AjustesFestivos>(RUTA_FESTIVOS, ID_AJUSTES_FESTIVOS) ?? AJUSTES_FESTIVOS;
   const ps = app.pareja().personas;
   const hoyF = hoy();
-  const proximos = listaFestivos(festivosLocales()).filter((f) => f.fecha >= hoyF).slice(0, 14);
+  const zona = app.zona();
+  const proximos = listaFestivos(zona, festivosLocales(zona?.municipioIne)).filter((f) => f.fecha >= hoyF).slice(0, 14);
   const anioSiguiente = +hoyF.slice(0, 4) + 1;
-  await dialogoFormulario("🎉 Festivos de Valladolid", [
-    h("p", { class: "secundario pequeno" }, "Los de la Comunidad (con los traslados a lunes del BOCyL) y las dos fiestas locales de la ciudad, que se descargan solas de los datos abiertos de la Junta."),
+  const ultimo = ultimoAnioFestivos(zona);
+  await dialogoFormulario(`🎉 Festivos${zona ? ` de ${zona.ciudad.nombre}` : ""}`, [
+    h("p", { class: "secundario pequeno" }, zona
+      ? `Los de ${zona.comunidad ?? "la comunidad"} (con los traslados a lunes de cada año) y las dos fiestas locales, que se descargan solas de los datos abiertos.`
+      : "Falta la zona (ciudad y festivos) en los datos de Merviri."),
     h("label", { class: "casilla" }, h("input", { type: "checkbox", name: "mostrar", checked: aj.mostrar }), h("span", {}, "Verlos en el calendario")),
     h("fieldset", { class: "campo grupo" }, h("legend", { class: "grupo-titulo" }, "¿Quién los libra?"),
       (["p1", "p2"] as const).map((p) => h("label", { class: "casilla" },
@@ -328,8 +332,8 @@ export async function ajustesFestivos(app: Merviri) {
     proximos.length ? [h("h3", { class: "arriba" }, "Próximos"),
       h("ul", { class: "lista lista-festivos" }, proximos.map((f) => h("li", {},
         h("span", { class: "fecha-festivo" }, FECHA_FESTIVO.format(new Date(`${f.fecha}T12:00:00Z`))), h("span", { class: "crece" }, f.nombre))))] : null,
-    ULTIMO_ANIO_FESTIVOS < anioSiguiente
-      ? h("p", { class: "ayuda arriba" }, `Aún no están los festivos de la Comunidad de ${anioSiguiente}: la Junta los publica en primavera y hay que añadirlos a Merviri.`)
+    zona && (ultimo ?? 0) < anioSiguiente
+      ? h("p", { class: "ayuda arriba" }, `Aún no están los festivos de ${anioSiguiente}: se publican hacia la primavera y hay que añadirlos a la zona de Merviri.`)
       : null,
   ], "Guardar", async (d) => {
     await app.guardar<AjustesFestivos>(RUTA_FESTIVOS, {

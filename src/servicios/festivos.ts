@@ -1,29 +1,35 @@
 import type { FestivoLocal } from "../dominio/festivos";
 
 /**
- * Fiestas locales de Valladolid desde los datos abiertos de la Junta de
- * Castilla y León (permite CORS; ya está en la CSP). Se guardan en el
- * navegador y se vuelven a pedir como mucho una vez por semana.
+ * Fiestas locales de vuestro municipio, desde los datos abiertos regionales
+ * (conjunto «Fiestas locales: calendario de fiestas de carácter local»; el
+ * código INE del municipio está en `zona.json`, no en el código). Se guardan
+ * en el navegador y se vuelven a pedir como mucho una vez por semana.
  */
 const BASE = "https://analisis.datosabiertos.jcyl.es/api/explore/v2.1/catalog/datasets/fiestas-locales-calendario-de-fiestas-de-caracter-local/records";
-export const INE_VALLADOLID = 47186;
 const CLAVE = "merviri:festivos-locales";
 const UNA_SEMANA = 7 * 24 * 3600 * 1000;
 
-/** Se lee del navegador la primera vez que hace falta. */
-let enMemoria: FestivoLocal[] | null = null;
+interface Cache { ine?: number; ts: number; datos: FestivoLocal[] }
 
-function leerCache(): { ts: number; datos: FestivoLocal[] } | null {
+/** Se lee del navegador la primera vez que hace falta. */
+let enMemoria: Cache | null = null;
+
+function leerCache(): Cache | null {
   try {
-    const c = JSON.parse(localStorage.getItem(CLAVE) ?? "null") as { ts: number; datos: FestivoLocal[] } | null;
+    const c = JSON.parse(localStorage.getItem(CLAVE) ?? "null") as Cache | null;
     return c && Array.isArray(c.datos) ? c : null;
   } catch {
     return null;
   }
 }
 
-/** Lo último que se descargó (vacío si nunca). */
-export const festivosLocales = (): FestivoLocal[] => (enMemoria ??= leerCache()?.datos ?? []);
+/** Lo último que se descargó para ese municipio (vacío si nunca). */
+export function festivosLocales(ine: number | null | undefined): FestivoLocal[] {
+  if (!ine) return [];
+  enMemoria ??= leerCache() ?? { ts: 0, datos: [] };
+  return enMemoria.ine === ine ? enMemoria.datos : [];
+}
 
 /** Convierte la respuesta de la API (se ignora lo que no tenga forma de festivo). */
 export function leerRespuesta(json: unknown): FestivoLocal[] {
@@ -37,22 +43,22 @@ export function leerRespuesta(json: unknown): FestivoLocal[] {
   });
 }
 
-/** Descarga los festivos locales si hace falta. Devuelve true si han cambiado. */
-export async function actualizarFestivosLocales(fetchImpl: typeof fetch = fetch.bind(globalThis)): Promise<boolean> {
+/** Descarga los festivos locales del municipio si hace falta. Devuelve true si han cambiado. */
+export async function actualizarFestivosLocales(ine: number, fetchImpl: typeof fetch = fetch.bind(globalThis)): Promise<boolean> {
   const c = leerCache();
-  if (c && Date.now() - c.ts < UNA_SEMANA) return false;
+  if (c && c.ine === ine && Date.now() - c.ts < UNA_SEMANA) return false;
   const url = new URL(BASE);
-  url.searchParams.set("where", `ine=${INE_VALLADOLID}`);
+  url.searchParams.set("where", `ine=${Math.trunc(ine)}`);
   url.searchParams.set("select", "fecha_fiesta,nombre_fiesta");
   url.searchParams.set("order_by", "fecha_fiesta");
   url.searchParams.set("limit", "100");
-  const res = await fetchImpl(url.toString());
+  const res = await fetchImpl(url.toString(), { referrerPolicy: "no-referrer" });
   if (!res.ok) throw new Error(`Festivos locales: ${res.status}`);
   const datos = leerRespuesta(await res.json());
   // Si la respuesta llega vacía, no se pisa lo que ya había.
   if (!datos.length) return false;
-  const antes = JSON.stringify(festivosLocales());
-  enMemoria = datos;
-  try { localStorage.setItem(CLAVE, JSON.stringify({ ts: Date.now(), datos })); } catch { /* sin almacenamiento */ }
+  const antes = JSON.stringify(festivosLocales(ine));
+  enMemoria = { ine, ts: Date.now(), datos };
+  try { localStorage.setItem(CLAVE, JSON.stringify(enMemoria)); } catch { /* sin almacenamiento */ }
   return JSON.stringify(datos) !== antes;
 }

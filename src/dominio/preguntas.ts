@@ -91,7 +91,7 @@ export const PREGUNTAS: string[] = [
   "¿Qué te gusta de cómo eres conmigo?",
   "¿Qué te ha sorprendido de mí recientemente?",
   "¿Qué plan de este mes te ha encantado?",
-  "¿Qué te gustaría decirle a la Elvira y la María del principio?",
+  "¿Qué te gustaría decirles a las dos del principio?",
   "¿Qué detalle mío te ha alegrado el día últimamente?",
   "¿Qué te hace sentir afortunada?",
   "¿Qué cosa de tu vida de ahora te habría hecho ilusión hace cinco años?",

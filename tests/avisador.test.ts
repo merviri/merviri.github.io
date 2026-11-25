@@ -2,7 +2,7 @@ import type { Merviri } from "../src/app/app";
 import { Avisador } from "../src/app/avisador";
 import { avisarElemento, avisarRecordatorio, avisarTarea } from "../src/app/eventos";
 import { RUTA_PLAN, RUTA_PROGRAMADOS, RUTA_SUSCRIPCIONES, type Suscripcion } from "../src/dominio/avisos";
-import { PAREJA_INICIAL } from "../src/dominio/pareja";
+import { PAREJA_PRUEBA } from "./pareja-prueba";
 import { RUTA_TAREAS, type Tarea } from "../src/dominio/tareas";
 import { RemotoMemoria } from "../src/github/memoria";
 import { aBase64Url, desdeBase64Url, desdeUtf8, unir, utf8 } from "../src/util/bytes";
@@ -45,7 +45,7 @@ function appFalsa(remoto: RemotoMemoria, persona: "p1" | "p2", datos: Record<str
     remotoActual: () => remoto,
     almacenLocal: () => null,
     sincronizar: async () => {},
-    pareja: () => PAREJA_INICIAL,
+    pareja: () => PAREJA_PRUEBA,
     lista: (ruta: string) => Object.values(datos[ruta] ?? {}),
     eventos: () => [],
     uno: (ruta: string, id: string) => datos[ruta]?.[id],
@@ -77,8 +77,8 @@ describe("avisador", () => {
     expect(entradas.envios).not.toContain("leche");
     const paraMovil = await Promise.all(envios.filter((x) => x.endpoint.endsWith("movil-m")).map((x) => abrir(x.cuerpo, m1.par, m1.auth)));
     expect(paraMovil).toEqual(expect.arrayContaining([
-      expect.objectContaining({ t: "🛒 Compra", b: "Elvira ha añadido «leche» y «pan»", r: "lista/l1" }),
-      expect.objectContaining({ t: "🔔 Elvira te recuerda", b: "Sacar la basura" }),
+      expect.objectContaining({ t: "🛒 Compra", b: "Ana ha añadido «leche» y «pan»", r: "lista/l1" }),
+      expect.objectContaining({ t: "🔔 Ana te recuerda", b: "Sacar la basura" }),
     ]));
   });
 
@@ -95,7 +95,7 @@ describe("avisador", () => {
     await app.avisador!.vaciar();
     const envios = JSON.parse(remoto.disparos[0]!.entradas.envios!) as { cuerpo: string }[];
     expect(envios).toHaveLength(1);
-    expect(await abrir(envios[0]!.cuerpo, m.par, m.auth)).toMatchObject({ t: "✅ Tarea nueva de Elvira", b: "Fontanero" });
+    expect(await abrir(envios[0]!.cuerpo, m.par, m.auth)).toMatchObject({ t: "✅ Tarea nueva de Ana", b: "Fontanero" });
   });
 
   it("deja programados los avisos con hora y no los reescribe si nada cambia", async () => {
@@ -111,7 +111,7 @@ describe("avisador", () => {
     const prog = JSON.parse(remoto.estado.ficheros[RUTA_PROGRAMADOS]!.texto) as { envios: { cuando: string; cuerpo: string }[] };
     expect(prog.envios.length).toBeGreaterThanOrEqual(1);
     expect(remoto.estado.ficheros[RUTA_PROGRAMADOS]!.texto).not.toContain("Basura");
-    expect(await abrir(prog.envios[0]!.cuerpo, m.par, m.auth)).toMatchObject({ t: "☀️ Buenos días, María", r: "tareas" });
+    expect(await abrir(prog.envios[0]!.cuerpo, m.par, m.auth)).toMatchObject({ t: "☀️ Buenos días, Bea", r: "tareas" });
     expect(datos[RUTA_PLAN]).toBeTruthy();
     const escrituras = remoto.escrituras;
     await app.avisador!.actualizarProgramados();

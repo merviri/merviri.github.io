@@ -3,7 +3,7 @@ import {
   deseoVisible, estadoPregunta, estadoVotacion, fechasCapsula, idRespuesta, leerOpciones, limpiarCampos, ordenarDeseos,
   preguntaDe, problemaCapsula, problemaVotacion, proximoCumple, racha, resumenAnio, type Capsula, type Deseo, type Respuesta, type Votacion, type Voto,
 } from "../src/dominio/juntas";
-import { PAREJA_INICIAL } from "../src/dominio/pareja";
+import { PAREJA_PRUEBA } from "./pareja-prueba";
 import { PREGUNTAS } from "../src/dominio/preguntas";
 
 const resp = (fecha: string, persona: "p1" | "p2", texto = "Sí"): Respuesta => ({ id: idRespuesta(fecha, persona), fecha, persona, texto });
@@ -138,7 +138,7 @@ describe("avisos de pareja", () => {
 
   it("avisa de las cápsulas que se abren, a quien van dirigidas", () => {
     const plan = planificar({
-      tareas: [], pareja: PAREJA_INICIAL, suscripciones: [sub("e", "p1"), sub("m", "p2")],
+      tareas: [], pareja: PAREJA_PRUEBA, suscripciones: [sub("e", "p1"), sub("m", "p2")],
       capsulas: [
         { id: "a", para: "p2", abrir: "2026-11-09", titulo: "Para ti", mensaje: "secreto" },
         { id: "b", para: "ambas", abrir: "2026-11-10", titulo: "Juntas", mensaje: "x" },
@@ -155,14 +155,14 @@ describe("avisos de pareja", () => {
 
   it("felicita el cumpleaños y avisa a la otra una semana antes", () => {
     const plan = planificar({
-      tareas: [], pareja: PAREJA_INICIAL, suscripciones: [sub("e", "p1"), sub("m", "p2")],
+      tareas: [], pareja: PAREJA_PRUEBA, suscripciones: [sub("e", "p1"), sub("m", "p2")],
       fichas: [{ id: "p2", cumple: "1995-11-08", campos: [] }, { id: "p1", cumple: "1994-11-14", campos: [] }],
       ahora: new Date("2026-11-07T06:00:00Z"), hoy: "2026-11-07", dias: 3,
     });
     expect(plan.map((p) => [p.dispositivo, p.aviso.t, p.cuando.slice(0, 10)])).toEqual([
-      ["e", "🎂 Hoy es el cumple de María", "2026-11-08"],
-      ["m", "🎂 ¡Feliz cumpleaños, María!", "2026-11-08"],
-      ["m", "🎁 En una semana es el cumple de Elvira", "2026-11-07"],
+      ["e", "🎂 Hoy es el cumple de Bea", "2026-11-08"],
+      ["m", "🎂 ¡Feliz cumpleaños, Bea!", "2026-11-08"],
+      ["m", "🎁 En una semana es el cumple de Ana", "2026-11-07"],
     ].sort((a, b) => a[2]!.localeCompare(b[2]!) || a[0]!.localeCompare(b[0]!)));
   });
 });

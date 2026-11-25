@@ -41,12 +41,12 @@ describe("motor de sincronización", () => {
     const remoto = new RemotoMemoria();
     const k = await clave();
     const { m } = await dispositivo(remoto, k);
-    await m.guardar(RUTA, { id: "a", texto: "hola María" }, "p1");
+    await m.guardar(RUTA, { id: "a", texto: "hola Bea" }, "p1");
     expect(m.lista(RUTA)).toHaveLength(1);
     expect(remoto.escrituras).toBe(0);
     await m.sincronizar();
     expect(remoto.escrituras).toBe(1);
-    expect(remoto.estado.ficheros[RUTA]!.texto).not.toContain("María");
+    expect(remoto.estado.ficheros[RUTA]!.texto).not.toContain("Bea");
     expect(m.estado.tipo).toBe("sincronizado");
     expect(m.pendientes()).toBe(0);
   });
@@ -56,8 +56,8 @@ describe("motor de sincronización", () => {
     const k = await clave();
     const e = await dispositivo(remoto, k);
     const ma = await dispositivo(remoto, k);
-    await e.m.guardar(RUTA, { id: "uno", t: "de Elvira" }, "p1");
-    await ma.m.guardar(RUTA, { id: "dos", t: "de María" }, "p2");
+    await e.m.guardar(RUTA, { id: "uno", t: "de Ana" }, "p1");
+    await ma.m.guardar(RUTA, { id: "dos", t: "de Bea" }, "p2");
     await e.m.sincronizar();
     await ma.m.sincronizar(); // choca (conflicto), relee y suma
     await e.m.sincronizar();

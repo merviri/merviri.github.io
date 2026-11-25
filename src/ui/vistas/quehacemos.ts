@@ -1,11 +1,11 @@
 import type { Merviri } from "../../app/app";
 import { RUTA_HORARIOS, type Horario } from "../../dominio/calendario";
 import { fechaCorta, hoy, type Fecha } from "../../dominio/fechas";
-import { CATALOGO } from "../../dominio/ideas";
+import { catalogoDe } from "../../dominio/ideas";
 import type { IdPersona } from "../../dominio/pareja";
 import { PLAN_VACIO, type Plan } from "../../dominio/planes";
 import { emojiTiempo, recomendar, textoMinutos, type Hueco, type Prevision, type Sugerencia } from "../../dominio/recomendar";
-import { prevision, previsionGuardada, VALLADOLID } from "../../servicios/tiempo";
+import { prevision, previsionGuardada } from "../../servicios/tiempo";
 import { conBoton, h, tostada } from "../dom";
 import { volver } from "./comunes";
 import { planDeIdea } from "./descubrir";
@@ -24,15 +24,22 @@ function textoHueco(h: Hueco): string {
   return `${diaLargo(h.dia)}, libres de ${textoMinutos(h.desde)} a ${textoMinutos(h.hasta)}`;
 }
 
-const coords = (p: Plan) => (p.lugar?.lat != null && p.lugar.lon != null ? { lat: p.lugar.lat, lon: p.lugar.lon } : VALLADOLID);
+type Coordenadas = { lat: number; lon: number };
+/** Dónde se mira el tiempo de un plan: su sitio o, si no tiene, vuestra ciudad. */
+const coords = (p: Plan, ciudad: Coordenadas | null): Coordenadas | null =>
+  (p.lugar?.lat != null && p.lugar.lon != null ? { lat: p.lugar.lat, lon: p.lugar.lon } : ciudad);
 
-/** Descarga la previsión de Valladolid y de los sitios de los planes (una vez por sesión y hora). */
+/** Descarga la previsión de vuestra ciudad y de los sitios de los planes (una vez por sesión y hora). */
 async function cargarTiempo(app: Merviri) {
   if (cargandoTiempo) return;
   cargandoTiempo = true;
-  const sitios = new Map<string, { lat: number; lon: number }>();
-  sitios.set("vll", VALLADOLID);
-  for (const p of planes(app)) if (p.estado === "idea") { const c = coords(p); sitios.set(`${c.lat.toFixed(2)},${c.lon.toFixed(2)}`, c); }
+  const ciudad = app.zona()?.ciudad ?? null;
+  const sitios = new Map<string, Coordenadas>();
+  if (ciudad) sitios.set("ciudad", ciudad);
+  for (const p of planes(app)) {
+    const c = p.estado === "idea" ? coords(p, ciudad) : null;
+    if (c) sitios.set(`${c.lat.toFixed(2)},${c.lon.toFixed(2)}`, c);
+  }
   await Promise.allSettled([...sitios.values()].slice(0, 12).map((c) => prevision(c.lat, c.lon)));
   tiempoCargado = true;
   cargandoTiempo = false;
@@ -72,13 +79,14 @@ export function vistaQueHacemos(app: Merviri): HTMLElement {
   const horarios: Partial<Record<IdPersona, Horario>> = {
     p1: app.uno<Horario>(RUTA_HORARIOS, "p1"), p2: app.uno<Horario>(RUTA_HORARIOS, "p2"),
   };
-  const tiempo = (p: Plan, f: Fecha) => { const c = coords(p); return previsionGuardada(c.lat, c.lon, f); };
+  const ciudad = app.zona()?.ciudad ?? null;
+  const tiempo = (p: Plan, f: Fecha) => { const c = coords(p, ciudad); return c ? previsionGuardada(c.lat, c.lon, f) : null; };
   const eventos = app.eventosConFestivos();
   const misPlanes = planes(app);
   const sugerencias = recomendar({ planes: misPlanes, ganas: ganasTodas(app), eventos, horarios, hoy: hoyF, dias: semanas * 7, tiempo, descartados });
   // Del catálogo: ideas que no están en vuestros planes, por si os apetece algo nuevo.
   const titulos = new Set(misPlanes.map((p) => p.titulo.toLowerCase()));
-  const catalogo: Plan[] = CATALOGO.filter((i) => !titulos.has(i.titulo.toLowerCase()))
+  const catalogo: Plan[] = catalogoDe(app.zona()).filter((i) => !titulos.has(i.titulo.toLowerCase()))
     .map((i) => ({ id: i.id, ...PLAN_VACIO, ...planDeIdea(i) }));
   const nuevas = recomendar({ planes: catalogo, ganas: [], eventos, horarios, hoy: hoyF, dias: semanas * 7, tiempo, descartados, max: 3 })
     .slice(0, 2);

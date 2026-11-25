@@ -60,6 +60,7 @@ const app = new Merviri(new AlmacenIdb(`merviri${sufijo}`), crearRemoto);
   });
   // Solo en desarrollo: para las pruebas en el navegador.
   if (DEV) Object.assign(window, { __merviri: app, __fotosPrueba: falsos });
+  if (DEV) app.zonaReserva = (await import("./dev/zona-ejemplo")).ZONA_EJEMPLO;
 }
 
 // El código de un enlace de vinculación se guarda en memoria y se quita de la barra de direcciones.
@@ -282,8 +283,9 @@ function pintarCabecera() {
 }
 
 app.alCambiar((motivo) => {
-  if (motivo === "fase" || motivo === "manual" || motivo === "token") {
+  if (motivo === "fase" || motivo === "manual" || motivo === "token" || motivo === "zona") {
     if (motivo === "manual") ocupada = false;
+    if (motivo === "zona") festivos();
     pintar(false);
     return;
   }
@@ -369,8 +371,11 @@ void app.arrancar().catch((e: unknown) => {
     h("p", {}, e instanceof Error ? e.message : String(e))));
 });
 void revisarVersion();
-// Fiestas locales de Valladolid (datos abiertos de la Junta): como mucho una vez por semana.
-const festivos = () => void actualizarFestivosLocales().then((cambio) => { if (cambio) app.refrescar(); }, () => undefined);
+// Fiestas locales del municipio de vuestra zona (datos abiertos regionales): como mucho una vez por semana.
+function festivos() {
+  const ine = app.zona()?.municipioIne;
+  if (ine) void actualizarFestivosLocales(ine).then((cambio) => { if (cambio) app.refrescar(); }, () => undefined);
+}
 festivos();
 setInterval(festivos, 6 * 3600 * 1000);
 

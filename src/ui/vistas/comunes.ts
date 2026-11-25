@@ -5,7 +5,7 @@ import { h, icono } from "../dom";
 export const volver = (destino = "#ajustes", texto = "Ajustes") =>
   h("a", { class: "volver", href: destino }, icono("atras"), texto);
 
-/** Elegir quién usa este dispositivo (Elvira turquesa, María rosa). */
+/** Elegir quién usa este dispositivo (persona turquesa o rosa). */
 export function elegirPersona(pareja: Pareja, actual: IdPersona | null, nombre = "persona"): HTMLElement {
   return h("fieldset", { class: "campo grupo" },
     h("legend", { class: "grupo-titulo" }, "¿Quién usa este dispositivo?"),

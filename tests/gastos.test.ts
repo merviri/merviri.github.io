@@ -96,8 +96,8 @@ describe("gastos fijos", () => {
 
 describe("exportar", () => {
   it("CSV con punto y coma y comas decimales", () => {
-    const t = exportarCsv([g({ concepto: 'Cena "especial"' })], (id) => (id === "p1" ? "Elvira" : "María"), "EUR");
-    expect(t).toContain("2026-11-07;Gasto;\"Cena \"\"especial\"\"\";Restaurantes;30,00;Elvira;Elvira 15,00, María 15,00;");
+    const t = exportarCsv([g({ concepto: 'Cena "especial"' })], (id) => (id === "p1" ? "Ana" : "Bea"), "EUR");
+    expect(t).toContain("2026-11-07;Gasto;\"Cena \"\"especial\"\"\";Restaurantes;30,00;Ana;Ana 15,00, Bea 15,00;");
   });
 });
 
@@ -109,8 +109,8 @@ describe("balance entre las dos", () => {
     const lisboa = bote("lisboa");
     const amigos = bote("rural", { amigos: [{ id: "a-ana", nombre: "Ana" }] });
     const s = saldoEntreLasDos([
-      { bote: casa, gastos: [g({ id: "1", importe: 2000, pagadoPor: "p2" })] }, // Elvira debe 10
-      { bote: lisboa, gastos: [g({ id: "2", importe: 30000, pagadoPor: "p1" })] }, // María debe 150
+      { bote: casa, gastos: [g({ id: "1", importe: 2000, pagadoPor: "p2" })] }, // Ana debe 10
+      { bote: lisboa, gastos: [g({ id: "2", importe: 30000, pagadoPor: "p1" })] }, // Bea debe 150
       { bote: amigos, gastos: [g({ id: "3", importe: 9000, pagadoPor: "p1", reparto: { modo: "iguales", entre: { p1: 1, p2: 1, "a-ana": 1 } } })] },
       { bote: bote("vacio"), gastos: [] },
     ]);

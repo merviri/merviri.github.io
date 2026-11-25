@@ -3,7 +3,8 @@ import { CATALOGO, FECHAS_ESPECIALES, proximaVez } from "../src/dominio/ideas";
 import { encajaFecha, filtrar, FILTRO_INICIAL, PLAN_VACIO, problemaPlan, textoReserva, type Ganas, type Plan } from "../src/dominio/planes";
 import { cabe, huecos, libresComunes, momentosDe, ocupado, recomendar, tiempoEncaja, type Prevision } from "../src/dominio/recomendar";
 import { convertir, normalizarHora } from "../src/servicios/agenda";
-import { distanciaKm, SITIOS_CERCA } from "../src/servicios/sitios";
+import { distanciaKm, sitiosCerca } from "../src/servicios/sitios";
+import { leerZona } from "../src/dominio/zona";
 
 const plan = (p: Partial<Plan>): Plan => ({ id: "x", titulo: "Plan", ...PLAN_VACIO, ...p });
 const ev = (e: Partial<Evento>): Evento => ({
@@ -37,12 +38,12 @@ describe("huecos libres de las dos", () => {
 
   it("las vacaciones anulan el horario habitual de esa persona (y no ocupan)", () => {
     const vacas = ev({ id: "v", titulo: "Vacaciones", categoria: "vacaciones", quien: "p1", todoElDia: true, horaInicio: null, horaFin: null, inicio: "2026-11-16", fin: "2026-11-20" });
-    // Lunes de vacaciones: Elvira libre todo el día; María sigue trabajando.
+    // Lunes de vacaciones: Ana libre todo el día; Bea sigue trabajando.
     expect(ocupado("2026-11-16", "p1", [vacas], trabajo("p1"))).toEqual([]);
     expect(ocupado("2026-11-16", "p2", [vacas], trabajo("p2"))).toEqual([[480, 900]]);
     expect(horarioDelDia(trabajo("p1"), "2026-11-16", "p1", [vacas])).toEqual([]);
     expect(horarioDelDia(trabajo("p1"), "2026-11-23", "p1", [vacas])).toEqual([{ desde: 480, hasta: 900, etiqueta: "Trabajo" }]);
-    // Si son de las dos (o María no trabaja), salen días enteros y un hueco de viaje.
+    // Si son de las dos (o Bea no trabaja), salen días enteros y un hueco de viaje.
     const ambas = { ...vacas, quien: "ambas" as const };
     const hs = huecos("2026-11-14", 9, [ambas], { p1: trabajo("p1"), p2: trabajo("p2") });
     expect(hs.some((x) => x.tipo === "viaje" && x.dia === "2026-11-14" && x.hastaDia === "2026-11-22")).toBe(true);
@@ -137,7 +138,7 @@ describe("descubrir", () => {
     expect(proximaVez(FECHAS_ESPECIALES.find((f) => f.id === "eclipse-2027")!, "2027-08-03")).toBeNull();
   });
 
-  it("convierte la agenda de la Junta", () => {
+  it("convierte la agenda de los datos abiertos", () => {
     expect(normalizarHora("18:30 h")).toBe("18:30");
     expect(normalizarHora("9.00")).toBe("09:00");
     const e = convertir({ id_evento: 1, titulo: " Concierto ", categoria: "Conciertos", fecha_inicio: "2026-11-19", hora_inicio: "20:00 h",
@@ -146,10 +147,13 @@ describe("descubrir", () => {
     expect(convertir({ titulo: "x", fecha_inicio: "no" })).toBeNull();
   });
 
-  it("sitios cercanos", () => {
-    expect(new Set(SITIOS_CERCA.map((s) => s.id)).size).toBe(SITIOS_CERCA.length);
-    expect(SITIOS_CERCA[0]!.km).toBeLessThanOrEqual(SITIOS_CERCA[SITIOS_CERCA.length - 1]!.km);
-    expect(Math.round(distanciaKm({ lat: 41.6523, lon: -4.7245 }, { lat: 40.9481, lon: -4.1184 }))).toBeGreaterThan(80); // Segovia
+  it("sitios cercanos (de la zona) ordenados por distancia", () => {
+    const zona = leerZona({ ciudad: { nombre: "Villaprueba", lat: 40, lon: -4 }, sitios: [
+      { id: "lejos", nombre: "Lejos", tipo: "castillo", lat: 41, lon: -4 }, { id: "cerca", nombre: "Cerca", tipo: "mirador", lat: 40.01, lon: -4 },
+    ] });
+    expect(sitiosCerca(zona).map((s) => [s.id, s.km])).toEqual([["cerca", 1], ["lejos", 111]]);
+    expect(sitiosCerca(null)).toEqual([]);
+    expect(Math.round(distanciaKm({ lat: 40, lon: -4 }, { lat: 41, lon: -4 }))).toBe(111);
   });
 });
 

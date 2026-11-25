@@ -15,7 +15,7 @@ import {
   visibleComo,
   type Evento,
 } from "../src/dominio/calendario";
-import { PAREJA_INICIAL } from "../src/dominio/pareja";
+import { PAREJA_PRUEBA } from "./pareja-prueba";
 
 const ev = (e: Partial<Evento>): Evento => ({
   id: "e", titulo: "Cena", quien: "ambas", categoria: "plan", inicio: "2026-11-14", fin: "2026-11-14",
@@ -112,7 +112,7 @@ describe("avisos del calendario", () => {
 
   it("el resumen de la mañana incluye los planes del día de cada una", () => {
     const plan = planificar({
-      tareas: [], pareja: PAREJA_INICIAL,
+      tareas: [], pareja: PAREJA_PRUEBA,
       eventos: [ev({ titulo: "Cena", inicio: "2026-11-08", fin: "2026-11-08", quien: "ambas" }),
         ev({ id: "d", titulo: "Dentista", inicio: "2026-11-08", fin: "2026-11-08", quien: "p2", horaInicio: "10:00", horaFin: null })],
       suscripciones: [sub("e", "p1"), sub("m", "p2")],
@@ -126,7 +126,7 @@ describe("avisos del calendario", () => {
 
   it("recordatorios: víspera y un par de horas antes, solo a quien le toca", () => {
     const plan = planificar({
-      tareas: [], pareja: PAREJA_INICIAL,
+      tareas: [], pareja: PAREJA_PRUEBA,
       eventos: [
         ev({ id: "v", titulo: "Médico", quien: "p2", inicio: "2026-11-10", fin: "2026-11-10", horaInicio: "12:00", horaFin: null, aviso: "vispera" }),
         ev({ id: "a", titulo: "Cine", quien: "ambas", inicio: "2026-11-10", fin: "2026-11-10", horaInicio: "19:30", horaFin: null, aviso: "antes" }),

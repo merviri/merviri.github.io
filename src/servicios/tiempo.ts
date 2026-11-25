@@ -3,10 +3,9 @@ import type { Prevision } from "../dominio/recomendar";
 
 /**
  * Tiempo previsto (Open-Meteo: gratis, sin cuenta ni clave). Solo se envían
- * las coordenadas del sitio del plan (o de Valladolid), nada vuestro.
+ * las coordenadas del sitio del plan (o de vuestra ciudad), nada vuestro.
  * https://open-meteo.com/en/docs
  */
-export const VALLADOLID = { nombre: "Valladolid", lat: 41.6523, lon: -4.7245 };
 
 const cache = new Map<string, { cuando: number; datos: Map<Fecha, Prevision> }>();
 const VIDA_MS = 60 * 60 * 1000;

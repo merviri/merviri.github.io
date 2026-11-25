@@ -1,6 +1,6 @@
 # Merviri ✨
 
-La app de Elvira y María: se usa desde el móvil y el ordenador, y las dos ven lo mismo.
+Una app para una pareja: se usa desde el móvil y el ordenador, y las dos ven lo mismo. Los nombres y la ciudad no están en el código: están en los datos privados.
 Es una aplicación web instalable (PWA) publicada en **https://merviri.github.io**.
 Los datos se guardan **cifrados** en el repositorio privado `merviri/datos`.
 
@@ -22,7 +22,7 @@ Los datos se guardan **cifrados** en el repositorio privado `merviri/datos`.
    - `merviri.github.io`: público, con este código. En Settings → Pages → Source: «GitHub Actions».
    - `datos`: privado y vacío.
    - `fotos-1`, `fotos-2`, `fotos-3`, `fotos-4` y `fotos-5`: privados y vacíos. Se usarán en el álbum; cuando uno se acerque a 5 GB, la app pasará al siguiente.
-3. **Token de grano fino** (lo crea Elvira en https://github.com/settings/personal-access-tokens/new):
+3. **Token de grano fino** (lo crea la dueña de la organización en https://github.com/settings/personal-access-tokens/new):
    - Token name: `Merviri`
    - Resource owner: **merviri**
    - Expiration: una fecha dentro de un año (apúntala; la app avisará dos semanas antes)
@@ -32,11 +32,11 @@ Los datos se guardan **cifrados** en el repositorio privado `merviri/datos`.
      - **Actions: Read and write** (lo usarán las notificaciones)
      - Metadata: Read-only, que se añade sola
    - Si GitHub pide aprobarlo, apruébalo en la organización: Settings → Personal access tokens → Pending requests.
-4. **Primer dispositivo** (el de Elvira): abre https://merviri.github.io → «Empezar Merviri».
+4. **Primer dispositivo** (el de quien creó la organización): abre https://merviri.github.io → «Empezar Merviri».
    1. Pega el token y su fecha.
    2. Elige la contraseña común (y una pista, si quieres).
    3. Guarda el código de recuperación.
-5. **Móvil de María**: en el móvil de Elvira, Ajustes → «Vincular otro dispositivo». María escanea el QR con la cámara y escribe la contraseña. Después, en Chrome: menú ⋮ → «Instalar aplicación».
+5. **Móvil de la otra**: en el primer dispositivo, Ajustes → «Vincular otro dispositivo». En el otro móvil se escanea el QR con la cámara y escribe la contraseña. Después, en Chrome: menú ⋮ → «Instalar aplicación».
 
 ## Avisos (notificaciones)
 
@@ -99,6 +99,8 @@ Las fotos van en `merviri/fotos-1` … `fotos-5` como `fotos/AAAA/MM/<id>.mini|.
 
 Todos los ficheros de `datos/` van cifrados.
 
+**La zona** (`zona.json`, en la raíz del repositorio de datos, sin cifrar porque solo lleva información pública de la ciudad): ciudad y coordenadas (para el tiempo), provincia (agenda cultural), código INE del municipio (fiestas locales), festivos de la comunidad por año, fiestas locales de reserva, ideas, fechas especiales y sitios cercanos de la zona. Así el código, que es público, no dice dónde vivís. Cada dispositivo guarda una copia cifrada para cuando no hay conexión. Formato y comprobaciones en `src/dominio/zona.ts`.
+
 Cada fichero de `datos/` tiene registros `{ id, actualizado, por, … }`.
 - **Si las dos cambian cosas distintas a la vez**, los cambios se suman.
 - **Si cambian el mismo registro**, gana el cambio más reciente.
@@ -125,8 +127,8 @@ Al subir a `main`, `.github/workflows/publicar.yml` pasa las pruebas, compila y 
 - [x] **a.** Base: icono, conexión, cifrado, sincronización, instalación, vinculación por QR, renovación del token, recuperación.
 - [x] **b.** Listas, tareas con turnos y recordatorios, notas y dibujos (con aviso al abrir la app).
 - [x] **c.** Avisos (Web Push): dibujos, ❤️, «recuérdaselo», tareas y listas al momento; resumen de la mañana y aniversarios con hora.
-- [x] **d.** Calendario común (mes, semana con horas y agenda), «ocupada» sin detalles, cumpleaños, horario habitual (con «🌴 Vacaciones / libre», que lo anula esos días u horas), festivos de Valladolid automáticos (Comunidad del BOCyL en `src/dominio/festivos.ts`, que hay que ampliar cada año; locales desde los datos abiertos de la Junta) y recordatorios.
-- [x] **e.** Planes y deseos (plazo, dificultad, duración, coste, reserva, clima, temporada, ganas de cada una), Descubrir (catálogo, agenda de la Junta, fechas especiales, sitios cercanos) y «¿Qué hacemos?» (huecos libres + tiempo de Open-Meteo).
+- [x] **d.** Calendario común (mes, semana con horas y agenda), «ocupada» sin detalles, cumpleaños, horario habitual (con «🌴 Vacaciones / libre», que lo anula esos días u horas), festivos automáticos (los de la comunidad en `zona.json`, que hay que ampliar cada año; los locales, desde los datos abiertos) y recordatorios.
+- [x] **e.** Planes y deseos (plazo, dificultad, duración, coste, reserva, clima, temporada, ganas de cada una), Descubrir (catálogo, agenda cultural de datos abiertos, fechas especiales, sitios cercanos) y «¿Qué hacemos?» (huecos libres + tiempo de Open-Meteo).
 - [x] **f.** Gastos tipo Tricount: un único balance entre las dos que suma todos sus botes (Casa, viajes, planes: los botes sirven para ver cuánto ha costado cada cosa) y botes con amigos con sus propias cuentas, repartos a partes iguales, por partes o por importes, saldos y cómo saldar, varias monedas (cambio del BCE), gastos fijos mensuales, resumen y CSV.
 - [x] **g.** Recetas, menú semanal (comida y cena, quién cocina) y lista de la compra por secciones del súper.
 - [x] **h.** Álbum compartido: originales cifrados (y miniatura y vista), fecha por EXIF (también HEIC/WebP/PNG), por el nombre del archivo (WhatsApp, capturas…) o puesta a mano, selección de varias fotos (descargar, fecha, álbum, papelera), descargas con la fecha y el álbum en el nombre, mapa de sitios (Leaflet + OpenStreetMap) enlazado a los álbumes, vídeos cortos (hasta 3 min, comprimidos a 720p en el móvil con Mediabunny y cifrados en trozos de 8 MB `<base>.orig.N`), miniaturas que se rehacen solas si faltan y revisión diaria de lo que hay en GitHub, por meses, álbumes y álbumes de planes, favoritas, papelera que libera espacio de verdad, ZIP para el ordenador y «Compartir → Merviri» desde la galería de Android.

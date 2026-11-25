@@ -1,8 +1,8 @@
 import { esFecha, sumarDias, type Fecha } from "../dominio/fechas";
 
 /**
- * Agenda cultural de la Junta de Castilla y León (datos abiertos, sin
- * clave): conciertos, teatro, exposiciones… de la provincia de Valladolid.
+ * Agenda cultural regional (datos abiertos, sin clave): conciertos, teatro,
+ * exposiciones… de vuestra provincia (la de `zona.json`).
  * https://analisis.datosabiertos.jcyl.es (conjunto «Eventos de la agenda
  * cultural categorizados y geolocalizados»).
  */
@@ -71,18 +71,18 @@ export function convertir(r: Crudo): EventoAgenda | null {
   };
 }
 
-let cache: { cuando: number; datos: EventoAgenda[] } | null = null;
+let cache: { provincia: string; cuando: number; datos: EventoAgenda[] } | null = null;
 
-export async function agendaValladolid(hoyF: Fecha, dias = 45): Promise<EventoAgenda[]> {
-  if (cache && Date.now() - cache.cuando < 30 * 60 * 1000) return cache.datos;
+export async function agendaDe(provincia: string, hoyF: Fecha, dias = 45): Promise<EventoAgenda[]> {
+  if (cache && cache.provincia === provincia && Date.now() - cache.cuando < 30 * 60 * 1000) return cache.datos;
   const hasta = sumarDias(hoyF, dias);
-  const where = `nombre_provincia="Valladolid" and fecha_inicio<="${hasta}" and (fecha_inicio>="${hoyF}" or fecha_fin>="${hoyF}")`;
+  const where = `nombre_provincia=${JSON.stringify(provincia)} and fecha_inicio<="${hasta}" and (fecha_inicio>="${hoyF}" or fecha_fin>="${hoyF}")`;
   const select = "id_evento,titulo,categoria,tematica,fecha_inicio,fecha_fin,hora_inicio,precio,lugar_celebracion,nombre_localidad,enlace_contenido,destinatarios,latitud,longitud";
   const url = `${BASE}?where=${encodeURIComponent(where)}&select=${encodeURIComponent(select)}&order_by=fecha_inicio&limit=100`;
   const res = await fetch(url, { referrerPolicy: "no-referrer" });
   if (!res.ok) throw new Error(`No se pudo leer la agenda (${res.status}).`);
   const j = (await res.json()) as { results?: Crudo[] };
   const datos = (j.results ?? []).map(convertir).filter((x): x is EventoAgenda => x !== null);
-  cache = { cuando: Date.now(), datos };
+  cache = { provincia, cuando: Date.now(), datos };
   return datos;
 }

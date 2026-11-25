@@ -45,7 +45,7 @@ export const MOMENTOS: { id: Momento; texto: string }[] = [
   { id: "manana", texto: "Mañana" }, { id: "tarde", texto: "Tarde" }, { id: "noche", texto: "Noche" },
 ];
 export const SITIOS: { id: Sitio; texto: string }[] = [
-  { id: "casa", texto: "En casa" }, { id: "ciudad", texto: "En Valladolid" }, { id: "cerca", texto: "Cerca (≤ 1 h)" }, { id: "lejos", texto: "Lejos" },
+  { id: "casa", texto: "En casa" }, { id: "ciudad", texto: "En la ciudad" }, { id: "cerca", texto: "Cerca (≤ 1 h)" }, { id: "lejos", texto: "Lejos" },
 ];
 
 export interface Lugar {

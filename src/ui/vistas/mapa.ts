@@ -10,7 +10,7 @@ import { conBoton, h, tostada } from "../dom";
 import { volver } from "./comunes";
 
 /**
- * Mapa de «dónde hemos estado», como el de la web de Elvira: Leaflet con
+ * Mapa de «dónde hemos estado»: Leaflet con
  * OpenStreetMap. Leaflet se carga solo al abrir el mapa. Las teselas piden la
  * zona que se ve a OpenStreetMap (solo con el origen como «Referer», que lo
  * exigen); nada de vuestros datos sale del móvil.
@@ -24,7 +24,10 @@ function cargarLeaflet(): Promise<L> {
   return cargando;
 }
 
-const VALLADOLID: [number, number] = [41.6523, -4.7245];
+/** Centro del mapa si no hay sitios: vuestra ciudad (de `zona.json`) o la península. */
+const PENINSULA: [number, number] = [40.2, -3.7];
+let centroCiudad: [number, number] | null = null;
+const centro = (): [number, number] => centroCiudad ?? PENINSULA;
 const TESELAS = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATRIBUCION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
 
@@ -64,6 +67,8 @@ function globo(app: Merviri, p: PuntoMapa): HTMLElement {
 }
 
 export function vistaMapa(app: Merviri, enfocar = ""): HTMLElement {
+  const c = app.zona()?.ciudad;
+  centroCiudad = c ? [c.lat, c.lon] : null;
   const ps = puntos(app);
   const caja = h("div", { class: "mapa", role: "region", "aria-label": "Mapa de los sitios" });
   // El mapa no se rehace con cada sincronización (se perdería el zoom).
@@ -116,7 +121,7 @@ async function pintarMapa(app: Merviri, caja: HTMLElement, ps: PuntoMapa[], enfo
   } else if (ps.length) {
     mapa.fitBounds(ps.map((p) => [p.lat, p.lon] as [number, number]), { padding: [32, 32], maxZoom: 11 });
   } else {
-    mapa.setView(VALLADOLID, 6);
+    mapa.setView(centro(), centroCiudad ? 6 : 5);
   }
 }
 
@@ -191,7 +196,7 @@ export function campoLugar(inicial: Lugar | null | undefined, nombrePorDefecto: 
     const Lf = await cargarLeaflet();
     mapa = Lf.map(cajaMapa, { scrollWheelZoom: false });
     capa(Lf).addTo(mapa);
-    mapa.setView(conCoordenadas(lugar) ? [lugar.lat, lugar.lon] : VALLADOLID, conCoordenadas(lugar) ? 11 : 6);
+    mapa.setView(conCoordenadas(lugar) ? [lugar.lat, lugar.lon] : centro(), conCoordenadas(lugar) ? 11 : 6);
     mapa.on("click", (ev: Leaflet.LeafletMouseEvent) => {
       elegir({ nombre: texto.value.trim() || nombrePorDefecto(), lat: +ev.latlng.lat.toFixed(5), lon: +ev.latlng.lng.toFixed(5) });
     });

@@ -302,7 +302,7 @@ export function vistaDibujo(app: Merviri, id: string): HTMLElement {
 }
 
 // ---------------------------------------------------------------------------
-// Aviso al abrir la app: «María te ha dejado un dibujo»
+// Aviso al abrir la app: «X te ha dejado un dibujo»
 // ---------------------------------------------------------------------------
 
 const mostradosEnEstaSesion = new Set<string>();

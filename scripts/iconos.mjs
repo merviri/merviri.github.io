@@ -1,5 +1,5 @@
-// Genera los iconos de Merviri: dos destellos (rosa de María y turquesa de
-// Elvira) que se cruzan; donde se solapan, morado (lo de las dos).
+// Genera los iconos de Merviri: dos destellos (rosa y turquesa, uno por
+// persona) que se cruzan; donde se solapan, morado (lo de las dos).
 // Uso: npm run iconos  → escribe en public/ los SVG y PNG.
 import { writeFileSync } from "node:fs";
 import { Resvg } from "@resvg/resvg-js";

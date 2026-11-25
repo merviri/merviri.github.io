@@ -2,7 +2,8 @@ import { diasEntre, esFecha, mismoDiaEnAnio, type Fecha } from "./fechas";
 
 /**
  * Vosotras: nombres, colores y desde cuándo estáis juntas.
- * p1 = Elvira (turquesa), p2 = María (rosa). Lo de las dos, morado.
+ * p1 = persona turquesa, p2 = persona rosa. Lo de las dos, morado. Los
+ * nombres de verdad están en los datos cifrados (`datos/pareja.json`).
  */
 export const RUTA_PAREJA = "datos/pareja.json";
 export const ID_PAREJA = "pareja";
@@ -23,7 +24,7 @@ export interface Pareja {
 
 export const PAREJA_INICIAL: Pareja = {
   id: ID_PAREJA,
-  personas: { p1: { nombre: "Elvira", color: "turquesa" }, p2: { nombre: "María", color: "rosa" } },
+  personas: { p1: { nombre: "Persona turquesa", color: "turquesa" }, p2: { nombre: "Persona rosa", color: "rosa" } },
   juntasDesde: null,
 };
 

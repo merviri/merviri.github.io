@@ -11,7 +11,7 @@ import { mensajeError } from "./errores";
 
 /**
  * Primera vez en este dispositivo:
- *  - crear Merviri (Elvira, una sola vez): conectar → contraseña → código de recuperación → vosotras;
+ *  - crear Merviri (la primera, una sola vez): conectar → contraseña → código de recuperación → vosotras;
  *  - unirse con un enlace o QR (lo normal): contraseña → quién eres;
  *  - unirse a mano con el token: conectar → contraseña → quién eres.
  */
@@ -68,7 +68,7 @@ export function vistaBienvenida(app: Merviri, codigoVinculo: string | null): HTM
         return h("section", { class: "bienvenida" },
           h("img", { class: "logo-grande", src: "/icono.svg", alt: "" }),
           h("h1", {}, "Merviri"),
-          h("p", { class: "lema" }, "La app de Elvira y María ✨"),
+          h("p", { class: "lema" }, "Vuestra app de pareja ✨"),
           h("div", { class: "botones-columna" },
             h("button", { class: "boton boton-primario", onclick: () => ir("conectar") }, "Empezar Merviri"),
             h("button", { class: "boton", onclick: () => ir("ya") }, "Ya tenemos Merviri"),
@@ -177,12 +177,12 @@ export function vistaBienvenida(app: Merviri, codigoVinculo: string | null): HTM
       }
 
       case "vosotras": {
-        const nombreDisp = h("input", { name: "dispositivo", required: true, maxlength: 40, value: nombrePorDefecto("Elvira", navigator.userAgent) });
+        const nombreDisp = h("input", { name: "dispositivo", required: true, maxlength: 40, placeholder: nombrePorDefecto("…", navigator.userAgent) });
         let tocado = false;
         nombreDisp.addEventListener("input", () => { tocado = true; });
         const f = formulario([
-          campo("Nombre de la persona turquesa", h("input", { name: "n1", value: "Elvira", required: true, maxlength: 40 })),
-          campo("Nombre de la persona rosa", h("input", { name: "n2", value: "María", required: true, maxlength: 40 })),
+          campo("Nombre de la persona turquesa", h("input", { name: "n1", required: true, maxlength: 40, autocomplete: "off" })),
+          campo("Nombre de la persona rosa", h("input", { name: "n2", required: true, maxlength: 40, autocomplete: "off" })),
           campo("¿Desde cuándo estáis juntas? (opcional)", h("input", { name: "desde", type: "date" }),
             "Merviri contará los días y os avisará de los aniversarios."),
           elegirPersona(PAREJA_INICIAL, "p1"),
@@ -198,12 +198,15 @@ export function vistaBienvenida(app: Merviri, codigoVinculo: string | null): HTM
           await app.crear(ctx.comp!, c.llavero, c.abierta, pareja, leerPersona(d), texto(d, "dispositivo"));
           tostada("¡Merviri está lista! ✨");
         });
-        f.addEventListener("change", (ev) => {
-          const t = ev.target as HTMLInputElement;
-          if (t.name !== "persona" || tocado) return;
+        // El nombre del dispositivo se propone con el nombre de quien lo usa (si no se ha tocado).
+        const proponer = () => {
+          if (tocado) return;
           const fd = new FormData(f);
-          nombreDisp.value = nombrePorDefecto(texto(fd, t.value === "p1" ? "n1" : "n2") || "ti", navigator.userAgent);
-        });
+          const n = texto(fd, fd.get("persona") === "p2" ? "n2" : "n1").trim();
+          nombreDisp.value = n ? nombrePorDefecto(n, navigator.userAgent) : "";
+        };
+        f.addEventListener("input", (ev) => { const t = (ev.target as HTMLInputElement).name; if (t === "n1" || t === "n2") proponer(); });
+        f.addEventListener("change", (ev) => { if ((ev.target as HTMLInputElement).name === "persona") proponer(); });
         return h("section", {}, pasos(3, 3), h("h1", {}, "Vosotras"), f);
       }
 

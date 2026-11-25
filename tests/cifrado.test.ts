@@ -89,9 +89,9 @@ describe("sobres", () => {
   it("cifra y descifra; la ruta forma parte del cifrado", async () => {
     const { abierta } = await crearLlavero("contraseña larga", null, OP);
     const k = { clave: abierta.clave, idClave: abierta.idClave };
-    const texto = await cerrarSobre(k, "datos/pareja.json", { hola: "María ✨" });
-    expect(texto).not.toContain("María");
-    expect(await abrirSobre(k, "datos/pareja.json", texto)).toEqual({ hola: "María ✨" });
+    const texto = await cerrarSobre(k, "datos/pareja.json", { hola: "Bea ✨" });
+    expect(texto).not.toContain("Bea");
+    expect(await abrirSobre(k, "datos/pareja.json", texto)).toEqual({ hola: "Bea ✨" });
     await expect(abrirSobre(k, "datos/otro.json", texto)).rejects.toBeInstanceOf(ErrorDescifrado);
   });
 
